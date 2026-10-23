@@ -1,0 +1,42 @@
+/* Minimal mobile-first base. Full theme tokens move into tokens.css in Phase 1. */
+:root {
+  --bg: #f4f4f2;
+  --ink: #0f0f0f;
+  --mute: #7c7c79;
+  font-family: system-ui, -apple-system, sans-serif;
+  color: var(--ink);
+  background: var(--bg);
+  -webkit-text-size-adjust: 100%;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--bg);
+}
+
+.placeholder {
+  padding: 48px 16px;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.placeholder h1 {
+  margin: 0 0 8px;
+  font-size: 32px;
+}
+
+.placeholder p {
+  margin: 0 0 8px;
+  line-height: 1.5;
+}
+
+.muted {
+  color: var(--mute);
+}
