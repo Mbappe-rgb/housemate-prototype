@@ -2,8 +2,11 @@ import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router'
 import { supabase } from '../../lib/supabase'
 import { friendlyAuthError } from '../../lib/authErrors'
-import { Field } from '../../components/Field'
-import { AuthLayout, FormError } from './AuthLayout'
+import { Field, PasswordField } from '../../components/Field'
+import { AuthLayout, BackBar, FormError, Hero } from './AuthLayout'
+import { pendingInviteRedirect } from '../invites/pendingInvite'
+
+const okEmail = (e: string) => /^\S+@\S+\.\S+$/.test(e.trim())
 
 export function SignUpPage() {
   const [name, setName] = useState('')
@@ -16,8 +19,9 @@ export function SignUpPage() {
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
     setError(null)
-    if (name.trim().length === 0) return setError('Please enter your name.')
-    if (password.length < 8) return setError('Please choose a password with at least 8 characters.')
+    if (!name.trim()) return setError('Add your first name.')
+    if (!okEmail(email)) return setError('Enter a valid email address.')
+    if (password.length < 8) return setError('Use at least 8 characters for your password.')
 
     setBusy(true)
     const { data, error } = await supabase.auth.signUp({
@@ -25,19 +29,20 @@ export function SignUpPage() {
       password,
       options: {
         data: { display_name: name.trim().slice(0, 40) },
-        emailRedirectTo: `${window.location.origin}/`,
+        // keeps a pending invite link through the email-confirmation hop
+        emailRedirectTo: pendingInviteRedirect(),
       },
     })
     setBusy(false)
     if (error) return setError(friendlyAuthError(error))
-    // With email confirmation off we get a session right away and the router moves on.
-    // With it on, there is no session until they click the link.
+    // Confirm-email off: we get a session and the router moves on. On: wait for the link.
     if (!data.session) setCheckEmail(true)
   }
 
   if (checkEmail) {
     return (
-      <AuthLayout title="Check your email" subtitle={`We sent a confirmation link to ${email.trim()}.`}>
+      <AuthLayout>
+        <Hero emoji="📬" title="Check your email" text={`We sent a confirmation link to ${email.trim()}. Open it on this phone to finish signing up.`} />
         <Link to="/login" className="btn sec">
           Back to log in
         </Link>
@@ -46,28 +51,23 @@ export function SignUpPage() {
   }
 
   return (
-    <AuthLayout title="Create your account" subtitle="HouseMate is invite-only while we test.">
-      <form className="stack" onSubmit={onSubmit} noValidate>
-        <Field label="Your name" autoComplete="name" maxLength={40} required value={name} onChange={(e) => setName(e.target.value)} />
-        <Field label="Email" type="email" autoComplete="email" inputMode="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
-        <Field
-          label="Password"
-          type="password"
-          autoComplete="new-password"
-          minLength={8}
-          required
-          hint="At least 8 characters"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
+    <AuthLayout>
+      <BackBar to="/welcome" />
+      <h1>Create your account</h1>
+      <p>It only takes a minute. HouseMate is invite-only while we test.</p>
+      <form onSubmit={onSubmit} noValidate style={{ display: 'contents' }}>
+        <Field label="First name" placeholder="First name" autoComplete="given-name" maxLength={40} value={name} onChange={(e) => setName(e.target.value)} />
+        <Field label="Email" placeholder="Email" type="email" inputMode="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <PasswordField label="Password" placeholder="Password, 8+ characters" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} />
         <FormError message={error} />
+        <div className="grow" />
         <button type="submit" className="btn" disabled={busy}>
           {busy ? 'Creating account…' : 'Create account'}
         </button>
       </form>
-      <p className="foot">
-        Already have an account? <Link to="/login">Log in</Link>
-      </p>
+      <Link to="/login" className="lk">
+        Already have an account? Log in
+      </Link>
     </AuthLayout>
   )
 }

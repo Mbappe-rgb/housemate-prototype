@@ -1,0 +1,76 @@
+/* Theme tokens from the prototype. The theme is set on <html data-theme="...">.
+   Lime is the default; the others become a profile setting later. */
+:root,
+:root[data-theme='lime'] {
+  --sheet: rgba(255, 255, 255, 0.74);
+  --bg: #f4f4f2;
+  --b1: #e6f8a2;
+  --ink: #0f0f0f;
+  --mute: #7c7c79;
+  --btn: #111;
+  --on: #fff;
+  --acc: #3e9a55;
+  --card: #fff;
+  --glass: rgba(255, 255, 255, 0.55);
+  --gb: rgba(255, 255, 255, 0.9);
+  --track: #e6e6e2;
+  --soft: #f1f1ee;
+  --warn: #c77a17;
+  --sh: rgba(60, 70, 20, 0.3);
+  color-scheme: light;
+}
+
+:root[data-theme='sage'] {
+  --sheet: rgba(255, 255, 255, 0.74);
+  --bg: #f1f3f0;
+  --b1: #cfe3d2;
+  --ink: #1d2b22;
+  --mute: #6b7c70;
+  --btn: #244c35;
+  --on: #fff;
+  --acc: #3f7d58;
+  --card: #fff;
+  --glass: rgba(255, 255, 255, 0.55);
+  --gb: rgba(255, 255, 255, 0.9);
+  --track: #e1e7e1;
+  --soft: #eef2ee;
+  --warn: #b9792a;
+  --sh: rgba(40, 80, 55, 0.3);
+}
+
+:root[data-theme='midnight'] {
+  --sheet: rgba(28, 34, 52, 0.72);
+  --bg: #0e1118;
+  --b1: #1f2f63;
+  --ink: #f1f3f8;
+  --mute: #8f9bb5;
+  --btn: #fff;
+  --on: #0e1118;
+  --acc: #5fd6a4;
+  --card: rgba(255, 255, 255, 0.07);
+  --glass: rgba(255, 255, 255, 0.09);
+  --gb: rgba(255, 255, 255, 0.16);
+  --track: rgba(255, 255, 255, 0.14);
+  --soft: rgba(255, 255, 255, 0.08);
+  --warn: #f2b35e;
+  --sh: rgba(0, 0, 0, 0.7);
+  color-scheme: dark;
+}
+
+:root[data-theme='pop'] {
+  --sheet: rgba(255, 255, 255, 0.76);
+  --bg: #fff5f9;
+  --b1: #dccbff;
+  --ink: #2a1b45;
+  --mute: #8070a0;
+  --btn: #2a1b45;
+  --on: #fff;
+  --acc: #12a377;
+  --card: #fff;
+  --glass: rgba(255, 255, 255, 0.6);
+  --gb: rgba(255, 255, 255, 0.95);
+  --track: #efe6f5;
+  --soft: #f7f0fc;
+  --warn: #e8791f;
+  --sh: rgba(122, 77, 245, 0.35);
+}

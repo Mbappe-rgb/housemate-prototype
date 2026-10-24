@@ -1,17 +1,16 @@
 import { Link } from 'react-router'
-import { AuthLayout } from './AuthLayout'
+import { AuthLayout, Hero } from './AuthLayout'
 
 export function WelcomePage() {
   return (
-    <AuthLayout title="Share the house, not the stress" subtitle="Split bills and chores with your housemates.">
-      <div className="stack">
-        <Link to="/signup" className="btn">
-          Create an account
-        </Link>
-        <Link to="/login" className="btn sec">
-          I already have an account
-        </Link>
-      </div>
+    <AuthLayout>
+      <Hero title="HouseMate" text="Split bills, share chores and keep the peace at home." />
+      <Link to="/signup" className="btn">
+        Create account
+      </Link>
+      <Link to="/login" className="btn sec" style={{ marginTop: 10 }}>
+        Log in
+      </Link>
     </AuthLayout>
   )
 }

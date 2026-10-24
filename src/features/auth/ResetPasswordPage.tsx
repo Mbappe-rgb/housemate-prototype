@@ -2,10 +2,10 @@ import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { supabase } from '../../lib/supabase'
 import { friendlyAuthError } from '../../lib/authErrors'
-import { Field } from '../../components/Field'
+import { PasswordField } from '../../components/Field'
+import { LoadingScreen } from '../../components/LoadingScreen'
 import { useAuth } from '../../app/auth'
-import { Splash } from '../../app/Gate'
-import { AuthLayout, FormError } from './AuthLayout'
+import { AuthLayout, FormError, Hero } from './AuthLayout'
 
 /** Opened from the reset email. Supabase signs them in from the link, then they pick a new password. */
 export function ResetPasswordPage() {
@@ -16,11 +16,12 @@ export function ResetPasswordPage() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  if (auth.loading) return <Splash />
+  if (auth.loading) return <LoadingScreen />
 
   if (!auth.session) {
     return (
-      <AuthLayout title="Link expired" subtitle="This reset link is invalid or has expired. Request a new one.">
+      <AuthLayout>
+        <Hero emoji="⏰" title="Link expired" text="This reset link is invalid or has expired. Request a new one." />
         <Link to="/forgot-password" className="btn">
           Send a new link
         </Link>
@@ -31,7 +32,7 @@ export function ResetPasswordPage() {
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
     setError(null)
-    if (password.length < 8) return setError('Please choose a password with at least 8 characters.')
+    if (password.length < 8) return setError('Use at least 8 characters for your password.')
     if (password !== confirm) return setError('The two passwords don’t match.')
     setBusy(true)
     const { error } = await supabase.auth.updateUser({ password })
@@ -41,11 +42,15 @@ export function ResetPasswordPage() {
   }
 
   return (
-    <AuthLayout title="Choose a new password">
-      <form className="stack" onSubmit={onSubmit} noValidate>
-        <Field label="New password" type="password" autoComplete="new-password" minLength={8} required hint="At least 8 characters" value={password} onChange={(e) => setPassword(e.target.value)} />
-        <Field label="Repeat new password" type="password" autoComplete="new-password" required value={confirm} onChange={(e) => setConfirm(e.target.value)} />
+    <AuthLayout>
+      <div style={{ height: 64 }} />
+      <h1>Choose a new password</h1>
+      <p>Pick something you haven’t used here before.</p>
+      <form onSubmit={onSubmit} noValidate style={{ display: 'contents' }}>
+        <PasswordField label="New password" placeholder="New password, 8+ characters" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+        <PasswordField label="Repeat new password" placeholder="Repeat new password" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} />
         <FormError message={error} />
+        <div className="grow" />
         <button type="submit" className="btn" disabled={busy}>
           {busy ? 'Saving…' : 'Save password'}
         </button>

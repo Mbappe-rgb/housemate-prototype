@@ -1,9 +1,8 @@
 import { useState, type FormEvent } from 'react'
-import { Link } from 'react-router'
 import { supabase } from '../../lib/supabase'
 import { friendlyAuthError } from '../../lib/authErrors'
 import { Field } from '../../components/Field'
-import { AuthLayout, FormError } from './AuthLayout'
+import { AuthLayout, BackBar, FormError } from './AuthLayout'
 
 export function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
@@ -14,6 +13,7 @@ export function ForgotPasswordPage() {
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
     setError(null)
+    if (!/^\S+@\S+\.\S+$/.test(email.trim())) return setError('Enter a valid email address.')
     setBusy(true)
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
       redirectTo: `${window.location.origin}/reset-password`,
@@ -23,31 +23,28 @@ export function ForgotPasswordPage() {
     setSent(true)
   }
 
-  if (sent) {
-    return (
-      <AuthLayout
-        title="Check your email"
-        subtitle="If that email has an account, a reset link is on its way. While we're testing, emails may not arrive. If yours doesn't, ask the HouseMate team to reset your password."
-      >
-        <Link to="/login" className="btn sec">
-          Back to log in
-        </Link>
-      </AuthLayout>
-    )
-  }
-
   return (
-    <AuthLayout title="Reset your password" subtitle="We'll email you a link to choose a new one.">
-      <form className="stack" onSubmit={onSubmit} noValidate>
-        <Field label="Email" type="email" autoComplete="email" inputMode="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+    <AuthLayout>
+      <BackBar to="/login" />
+      <h1>Reset your password</h1>
+      <p>Enter your email and we’ll send you a link to choose a new one.</p>
+      <form onSubmit={onSubmit} noValidate style={{ display: 'contents' }}>
+        <Field label="Email" placeholder="Email" type="email" inputMode="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
         <FormError message={error} />
+        {sent && (
+          <div className="card lk2" style={{ marginTop: 14 }} role="status">
+            <b>Check your inbox</b>
+            <small style={{ display: 'block', marginTop: 4 }}>
+              If {email.trim()} has an account, a reset link is on its way. While we’re testing, emails may not arrive. If
+              yours doesn’t, ask the HouseMate team to reset your password.
+            </small>
+          </div>
+        )}
+        <div className="grow" />
         <button type="submit" className="btn" disabled={busy}>
-          {busy ? 'Sending…' : 'Send reset link'}
+          {busy ? 'Sending…' : sent ? 'Send again' : 'Send reset link'}
         </button>
       </form>
-      <p className="foot">
-        <Link to="/login">Back to log in</Link>
-      </p>
     </AuthLayout>
   )
 }
