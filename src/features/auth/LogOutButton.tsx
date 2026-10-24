@@ -6,7 +6,7 @@ export function LogOutButton() {
   return (
     <button
       type="button"
-      className="link-btn"
+      className="lk"
       disabled={busy}
       onClick={async () => {
         setBusy(true)
