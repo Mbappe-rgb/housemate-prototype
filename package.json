@@ -7,11 +7,17 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "db:push": "supabase db push",
+    "db:types": "supabase gen types typescript --linked > src/types/database.ts",
+    "db:seed": "supabase db query --linked -f supabase/seed.sql",
+    "db:test": "supabase db query --linked -f supabase/tests/isolation.sql"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.118.0",
     "react": "^19.3.1",
-    "react-dom": "^19.3.1"
+    "react-dom": "^19.3.1",
+    "react-router": "^7.18.4"
   },
   "devDependencies": {
     "@types/node": "^24.19.2",
@@ -19,6 +25,7 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
     "oxlint": "^1.88.0",
+    "supabase": "^2.122.0",
     "typescript": "~6.0.3",
     "vite": "^8.3.4"
   }

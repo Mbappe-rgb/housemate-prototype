@@ -1,8 +1,16 @@
-/* Minimal mobile-first base. Full theme tokens move into tokens.css in Phase 1. */
+/* Minimal mobile-first base, using the prototype's "lime" theme values.
+   Full theme tokens move into tokens.css in Phase 1. */
 :root {
   --bg: #f4f4f2;
+  --b1: #e6f8a2;
   --ink: #0f0f0f;
   --mute: #7c7c79;
+  --btn: #111;
+  --on: #fff;
+  --acc: #3e9a55;
+  --soft: #ebebe7;
+  --warn: #b0650a;
+  --sh: rgba(60, 70, 20, 0.3);
   font-family: system-ui, -apple-system, sans-serif;
   color: var(--ink);
   background: var(--bg);
@@ -18,25 +26,154 @@
 body {
   margin: 0;
   min-height: 100dvh;
-  background: var(--bg);
+  background: linear-gradient(180deg, var(--b1) 0, var(--bg) 330px), var(--bg);
+  background-repeat: no-repeat;
 }
 
-.placeholder {
-  padding: 48px 16px;
-  max-width: 480px;
-  margin: 0 auto;
-}
-
-.placeholder h1 {
+h1 {
   margin: 0 0 8px;
-  font-size: 32px;
+  font-size: 30px;
+  line-height: 1.15;
 }
 
-.placeholder p {
+p {
   margin: 0 0 8px;
   line-height: 1.5;
 }
 
+a {
+  color: inherit;
+  font-weight: 600;
+}
+
 .muted {
   color: var(--mute);
+}
+
+/* Page frame: phone first, safe-area aware */
+.page {
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100dvh;
+  padding: calc(40px + env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom));
+}
+
+.page-center {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  text-align: center;
+}
+
+.brand {
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  margin-bottom: 28px;
+}
+
+.auth-head {
+  margin-bottom: 28px;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.foot {
+  margin-top: 18px;
+  text-align: center;
+}
+
+/* Fields: 16px+ text so iOS doesn't zoom */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.lbl {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.fld {
+  width: 100%;
+  font: inherit;
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--ink);
+  background: #fff;
+  border: 1.5px solid var(--soft);
+  border-radius: 16px;
+  padding: 13px 14px;
+  min-height: 48px;
+}
+
+.fld:focus {
+  outline: 0;
+  border-color: var(--acc);
+}
+
+.hint {
+  font-size: 14px;
+}
+
+.err {
+  color: var(--warn);
+  font-weight: 600;
+  margin: 0;
+}
+
+/* Buttons: at least 48px tall */
+.btn {
+  display: block;
+  width: 100%;
+  min-height: 52px;
+  border: 0;
+  border-radius: 18px;
+  padding: 15px;
+  font: inherit;
+  font-size: 17px;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+  background: var(--btn);
+  color: var(--on);
+  cursor: pointer;
+  box-shadow: 0 10px 20px -12px var(--sh);
+}
+
+.btn.sec {
+  background: var(--soft);
+  color: var(--ink);
+  box-shadow: none;
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.btn:focus-visible,
+.link-btn:focus-visible,
+a:focus-visible {
+  outline: 3px solid var(--acc);
+  outline-offset: 2px;
+}
+
+.link-btn {
+  display: block;
+  margin: 24px auto 0;
+  min-height: 44px;
+  padding: 10px 16px;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 600;
+  color: var(--mute);
+  cursor: pointer;
 }
