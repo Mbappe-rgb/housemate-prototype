@@ -435,3 +435,11 @@ button.row { cursor: pointer; }
 
 .seg2.no-top { margin-top: 0; }
 .demo .scr { padding-top: calc(52px + env(safe-area-inset-top)); }
+
+/* ---------- Join requests (admin) ---------- */
+.jrc { padding: 16px; margin-bottom: 12px; }
+.jr { padding: 12px 0 2px; border-top: 1px solid var(--track); margin-top: 10px; }
+.jr:first-of-type { border-top: 0; margin-top: 4px; }
+.jr .btn { padding: 13px; }
+.notif-empty { text-align: center; padding: 18px 0 8px; }
+button.tg { cursor: pointer; padding: 9px 13px; }

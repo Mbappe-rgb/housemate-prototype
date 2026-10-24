@@ -10,6 +10,7 @@ export type AppUI = {
   openNotifications: () => void
   openEditProfile: () => void
   confirmLeave: () => void
+  confirmRemove: (memberId: string) => void
 }
 
 export const AppUIContext = createContext<AppUI | null>(null)

@@ -378,6 +378,71 @@ export type Database = {
           },
         ]
       }
+      join_requests: {
+        Row: {
+          acknowledged_at: string | null
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          household_id: string
+          id: string
+          invite_id: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          household_id: string
+          id?: string
+          invite_id?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          household_id?: string
+          id?: string
+          invite_id?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "join_requests_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "join_requests_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "join_requests_invite_id_fkey"
+            columns: ["invite_id"]
+            isOneToOne: false
+            referencedRelation: "invites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "join_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_hue: number
@@ -460,8 +525,49 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      acknowledge_join_request: {
+        Args: { p_request: string }
+        Returns: undefined
+      }
+      cancel_join_request: { Args: never; Returns: undefined }
+      create_household: {
+        Args: { p_name: string; p_timezone?: string }
+        Returns: string
+      }
+      decide_join_request: {
+        Args: { p_approve: boolean; p_request: string }
+        Returns: string
+      }
+      generate_invite_token: { Args: never; Returns: string }
+      get_invite_link: { Args: { p_household: string }; Returns: string }
       hook_before_user_created: { Args: { event: Json }; Returns: Json }
+      invite_status: {
+        Args: { inv: Database["public"]["Tables"]["invites"]["Row"] }
+        Returns: string
+      }
       is_member: { Args: { h: string }; Returns: boolean }
+      is_owner: { Args: { h: string }; Returns: boolean }
+      leave_household: { Args: { p_new_admin?: string }; Returns: undefined }
+      list_join_requests: {
+        Args: { p_household: string }
+        Returns: {
+          avatar_hue: number
+          created_at: string
+          display_name: string
+          email: string
+          id: string
+          user_id: string
+        }[]
+      }
+      my_join_request: { Args: never; Returns: Json }
+      new_link_invite: { Args: { creator: string; h: string }; Returns: string }
+      preview_invite: { Args: { p_token: string }; Returns: Json }
+      remove_member: {
+        Args: { p_household: string; p_user: string }
+        Returns: undefined
+      }
+      request_to_join: { Args: { p_token: string }; Returns: string }
+      reset_invite_link: { Args: { p_household: string }; Returns: string }
       shares_household: { Args: { other: string }; Returns: boolean }
     }
     Enums: {

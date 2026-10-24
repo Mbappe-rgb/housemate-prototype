@@ -161,14 +161,25 @@ export function InvitePanelView({ token, householdName, emptyMessage, onReset, r
   )
 }
 
-/** Invite panel for the current household. */
+/** Invite panel for the current household. Only the admin can reset the link. */
 export function InvitePanel() {
   const house = useHouse()
+  const [resetting, setResetting] = useState(false)
   return (
     <InvitePanelView
       token={house.inviteCode}
       householdName={house.household.name}
-      emptyMessage="Invite links arrive in the next update."
+      emptyMessage="We couldn’t load your invite link. Leave this screen and come back to try again."
+      resetting={resetting}
+      onReset={
+        house.isAdmin
+          ? async () => {
+              setResetting(true)
+              await house.actions.resetInvite()
+              setResetting(false)
+            }
+          : undefined
+      }
     />
   )
 }

@@ -41,8 +41,18 @@ export function HomeHeader() {
         </b>
         <small>{house.household.name}</small>
       </div>
-      <button type="button" className="ib" aria-label="Notifications" onClick={ui.openNotifications}>
+      <button
+        type="button"
+        className="ib"
+        aria-label={house.joinRequests.length ? `Notifications, ${house.joinRequests.length} new` : 'Notifications'}
+        onClick={ui.openNotifications}
+      >
         <Icon name="bell" size={20} />
+        {house.joinRequests.length > 0 && (
+          <span className="badge" aria-hidden="true">
+            {house.joinRequests.length}
+          </span>
+        )}
       </button>
     </header>
   )

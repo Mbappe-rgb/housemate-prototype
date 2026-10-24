@@ -10,6 +10,9 @@ import { ForgotPasswordPage } from '../features/auth/ForgotPasswordPage'
 import { ResetPasswordPage } from '../features/auth/ResetPasswordPage'
 import { NamePage } from '../features/onboarding/NamePage'
 import { HouseholdChoicePage } from '../features/onboarding/HouseholdChoicePage'
+import { CreateHouseholdPage } from '../features/onboarding/CreateHouseholdPage'
+import { JoinCodePage } from '../features/onboarding/JoinCodePage'
+import { JoinPage } from '../features/invites/JoinPage'
 import { LiveHouseProvider } from '../features/house/LiveHouseProvider'
 import { AppShell } from '../features/app/AppShell'
 import { HomeScreen } from '../features/app/screens/HomeScreen'
@@ -67,7 +70,12 @@ export default function App() {
             </Route>
             <Route element={<Gate stage="/setup/household" />}>
               <Route path="/setup/household" element={<HouseholdChoicePage />} />
+              <Route path="/setup/create" element={<CreateHouseholdPage />} />
+              <Route path="/setup/join" element={<JoinCodePage />} />
             </Route>
+
+            {/* Invite links and QR codes; works logged in or out */}
+            <Route path="/join/:token" element={<JoinPage />} />
 
             {/* The app */}
             <Route element={<Gate stage="/" />}>

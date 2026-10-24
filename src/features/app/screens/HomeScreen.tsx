@@ -8,6 +8,7 @@ import { formatMoney } from '../../../lib/money'
 import { useHouse } from '../../house/house'
 import { DayDots, DayItems, HomeHeader, Section } from '../parts'
 import { useAppUI } from '../ui'
+import { JoinRequestsCard } from '../JoinRequests'
 
 function Hero() {
   const house = useHouse()
@@ -129,6 +130,7 @@ export function HomeScreen() {
   return (
     <div className="scr">
       <HomeHeader />
+      <JoinRequestsCard />
       <Hero />
       <div className="tiles">
         <div>

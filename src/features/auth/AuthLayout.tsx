@@ -9,10 +9,12 @@ export function BackBar({ to, onBack, step }: { to?: string; onBack?: () => void
     <Link to={to} className="ib" aria-label="Back">
       <Icon name="back" size={20} />
     </Link>
-  ) : (
+  ) : onBack ? (
     <button type="button" className="ib" aria-label="Back" onClick={onBack}>
       <Icon name="back" size={20} />
     </button>
+  ) : (
+    <span className="end" />
   )
   return (
     <div className="obh">

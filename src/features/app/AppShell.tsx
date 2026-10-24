@@ -2,13 +2,14 @@ import { useMemo, useState } from 'react'
 import { NavLink, Outlet } from 'react-router'
 import { Icon, type IconName } from '../../components/Icon'
 import { Dialog, Sheet } from '../../components/Sheet'
-import { useToast } from '../../components/Toast'
 import { useHouse } from '../house/house'
 import { AppUIContext, type AppUI } from './ui'
 import { BillSheet } from './sheets/BillSheet'
 import { AddBillSheet } from './sheets/AddBillSheet'
 import { AddChoreSheet } from './sheets/AddChoreSheet'
 import { EditProfileSheet } from './sheets/EditProfileSheet'
+import { LeaveDialog, RemoveMemberDialog } from './LeaveDialogs'
+import { JoinRequestList } from './JoinRequests'
 
 const NAV: [string, IconName, string][] = [
   ['.', 'home', 'Home'],
@@ -26,12 +27,13 @@ type Open =
   | { kind: 'chore'; id: string }
   | { kind: 'profile' }
   | { kind: 'leave' }
+  | { kind: 'remove'; id: string }
+  | { kind: 'notifications' }
   | null
 
 /** Bottom nav, + button, and every sheet/dialog in the app. Screens render in <Outlet />. */
 export function AppShell() {
   const house = useHouse()
-  const toast = useToast()
   const [open, setOpen] = useState<Open>(null)
   const close = () => setOpen(null)
 
@@ -42,11 +44,12 @@ export function AppShell() {
       openAddChore: () => setOpen({ kind: 'addChore' }),
       openAddMenu: () => setOpen({ kind: 'menu' }),
       confirmChore: (id) => setOpen({ kind: 'chore', id }),
-      openNotifications: () => toast('You’re all caught up'),
+      openNotifications: () => setOpen({ kind: 'notifications' }),
       openEditProfile: () => setOpen({ kind: 'profile' }),
       confirmLeave: () => setOpen({ kind: 'leave' }),
+      confirmRemove: (id) => setOpen({ kind: 'remove', id }),
     }),
-    [toast],
+    [],
   )
 
   const chore = open?.kind === 'chore' ? house.chores.find((c) => c.id === open.id) : undefined
@@ -112,27 +115,28 @@ export function AppShell() {
           </button>
         </Dialog>
       )}
-      {open?.kind === 'leave' && (
-        <Dialog label="Leave household" onClose={close} alert>
-          <div className="bg" aria-hidden="true">
-            👋
+      {open?.kind === 'leave' && <LeaveDialog onClose={close} />}
+      {open?.kind === 'remove' && <RemoveMemberDialog memberId={open.id} onClose={close} />}
+      {open?.kind === 'notifications' && (
+        <Sheet label="Notifications" onClose={close}>
+          <div className="top">
+            <div>
+              <b className="lg">Notifications</b>
+              <small>{house.household.name}</small>
+            </div>
           </div>
-          <b>Leave {house.household.name}?</b>
-          <p>You’ll lose access to its bills and chores. You’d need a new invite to come back.</p>
-          <button
-            type="button"
-            className="btn danger"
-            onClick={() => {
-              house.actions.leaveHousehold()
-              close()
-            }}
-          >
-            Leave household
-          </button>
+          {house.joinRequests.length ? (
+            <>
+              <h4>Requests to join</h4>
+              <JoinRequestList />
+            </>
+          ) : (
+            <p className="notif-empty muted">You’re all caught up.</p>
+          )}
           <button type="button" className="lk" onClick={close}>
-            Stay
+            Close
           </button>
-        </Dialog>
+        </Sheet>
       )}
     </AppUIContext.Provider>
   )

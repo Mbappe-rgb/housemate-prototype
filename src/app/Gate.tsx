@@ -2,6 +2,7 @@ import { Navigate, Outlet, useLocation } from 'react-router'
 import { useAuth } from './auth'
 import { stageFor, type Stage } from './stage'
 import { LoadingScreen } from '../components/LoadingScreen'
+import { readPendingInvite } from '../features/invites/pendingInvite'
 
 /**
  * Route guard. Renders the nested routes only when the person is at the `stage` they belong in
@@ -26,6 +27,11 @@ export function Gate({ stage }: { stage: Stage }) {
   }
 
   const target = stageFor(auth)
-  if (target !== stage) return <Navigate to={target} replace state={{ from: location.pathname }} />
+  if (target !== stage) {
+    // Came in through an invite link and just signed up / logged in: go back to that invite
+    const pending = target === '/setup/household' ? readPendingInvite() : null
+    if (pending) return <Navigate to={`/join/${pending}`} replace />
+    return <Navigate to={target} replace state={{ from: location.pathname }} />
+  }
   return <Outlet />
 }
