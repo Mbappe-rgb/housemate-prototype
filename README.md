@@ -32,6 +32,39 @@ Only the project URL and the publishable (anon) key go here. Never use the secre
 | `npm run build` | Type-check and build to `dist/` |
 | `npm run preview` | Serve the built app locally |
 | `npm run lint` | Lint with oxlint |
+| `npm run db:push` | Apply new migrations to the linked Supabase project |
+| `npm run db:types` | Regenerate `src/types/database.ts` after a schema change |
+| `npm run db:seed` | Load fake data into the **dev** project (never prod) |
+| `npm run db:test` | Run the isolation and rule checks against the linked project (needs the seed) |
+
+## Database
+
+Migrations live in `supabase/migrations` and are applied with the Supabase CLI
+(installed with the project, so use `npx supabase`). One-time setup per computer:
+
+```bash
+npx supabase login
+npx supabase link --project-ref YOUR_DEV_PROJECT_REF
+```
+
+**Security model:** Row Level Security is on for every table. The app can read only its own
+household's data and edit only its own profile. Every other write goes through database
+functions that check the rules.
+
+**Invite-only signups:** only emails in `public.allowed_signups` can create an account.
+To add a tester, run this in the Supabase SQL Editor:
+
+```sql
+insert into public.allowed_signups (email) values ('tester@example.com');
+```
+
+**Auth settings** are in `supabase/config.toml` (site URL, redirect URLs, password length, the
+signup hook). Run `npx supabase config diff` to compare them with the linked project, and
+`npx supabase config push` to apply them.
+
+**Password resets:** Supabase's built-in email only reaches your Supabase team until we set up
+custom email (Phase 7). Until then, reset a tester's password from the dashboard
+(Authentication > Users).
 
 ## Folder layout
 
