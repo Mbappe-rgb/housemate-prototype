@@ -42,7 +42,23 @@ export type HouseActions = {
   addChore: (chore: NewChore) => void
   /** resolves to an error message, or null when saved */
   saveProfile: (edit: ProfileEdit) => Promise<string | null>
-  leaveHousehold: () => void
+  /** admin must name a new admin when others remain; resolves to an error message or null */
+  leaveHousehold: (newAdminId?: string) => Promise<string | null>
+  /** admin only */
+  removeMember: (memberId: string) => Promise<string | null>
+  /** admin only: revoke the current link and make a new one */
+  resetInvite: () => Promise<void>
+  /** admin only */
+  decideRequest: (requestId: string, approve: boolean) => Promise<void>
+}
+
+export type JoinRequest = {
+  id: string
+  userId: string
+  name: string
+  hue: number
+  email: string | null
+  createdAt: string
 }
 
 export type House = {
@@ -56,6 +72,10 @@ export type House = {
   bills: Bill[]
   chores: Chore[]
   inviteCode: string | null
+  /** I'm the household's owner ("Admin") */
+  isAdmin: boolean
+  /** pending requests to join (only loaded for the admin) */
+  joinRequests: JoinRequest[]
   /** false while bills and chores aren't connected to the database yet (Phases 4-5) */
   moneyReady: boolean
   actions: HouseActions

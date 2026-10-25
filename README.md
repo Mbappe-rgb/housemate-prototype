@@ -4,6 +4,8 @@ A mobile-first web app for sharing household chores and bills.
 
 - **Design reference:** [`prototype/index.html`](prototype/index.html). Open it in a browser.
 - **Plan:** [`docs/implementation-plan.md`](docs/implementation-plan.md). Read it before starting any task.
+- **Decisions:** [`docs/decisions.md`](docs/decisions.md), e.g. how joining a household works.
+- **Design review:** open `/demo` for the full app with sample data (no account needed).
 
 ## Stack
 
@@ -32,6 +34,7 @@ Only the project URL and the publishable (anon) key go here. Never use the secre
 | `npm run build` | Type-check and build to `dist/` |
 | `npm run preview` | Serve the built app locally |
 | `npm run lint` | Lint with oxlint |
+| `npm test` | Unit tests for money, dates and invite codes (Vitest) |
 | `npm run db:push` | Apply new migrations to the linked Supabase project |
 | `npm run db:types` | Regenerate `src/types/database.ts` after a schema change |
 | `npm run db:seed` | Load fake data into the **dev** project (never prod) |
@@ -61,6 +64,10 @@ insert into public.allowed_signups (email) values ('tester@example.com');
 **Auth settings** are in `supabase/config.toml` (site URL, redirect URLs, password length, the
 signup hook). Run `npx supabase config diff` to compare them with the linked project, and
 `npx supabase config push` to apply them.
+
+**Households and invites:** the creator is the admin. People open an invite link (`/join/CODE`), sign up or
+log in, and ask to join; the admin approves them from the dashboard. Rules are in `docs/decisions.md`.
+To test the join flow you need two allowlisted accounts, ideally on two phones.
 
 **Password resets:** Supabase's built-in email only reaches your Supabase team until we set up
 custom email (Phase 7). Until then, reset a tester's password from the dashboard

@@ -41,7 +41,15 @@ export function HouseholdScreen() {
                 {m.etransferEmail && <small style={{ display: 'block', fontWeight: 400 }}>{m.etransferEmail}</small>}
               </span>
               {m.role === 'owner' && <em className="tg ok">Admin</em>}
-              {m.id === house.me.id && <em className="tg">You</em>}
+              {m.id === house.me.id ? (
+                <em className="tg">You</em>
+              ) : (
+                house.isAdmin && (
+                  <button type="button" className="tg" onClick={() => ui.confirmRemove(m.id)} aria-label={`Remove ${m.name}`}>
+                    Remove
+                  </button>
+                )
+              )}
             </div>
           ))}
         </div>
@@ -49,6 +57,7 @@ export function HouseholdScreen() {
 
       <Section title="Invite housemates">
         <InvitePanel />
+        {!house.isAdmin && <small className="hint">The admin approves everyone who asks to join.</small>}
       </Section>
 
       <button type="button" className="btn sec" style={{ marginTop: 18, color: 'var(--warn)' }} onClick={ui.confirmLeave}>

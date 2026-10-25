@@ -3,7 +3,8 @@
 --   npx supabase db query --linked -f supabase/tests/isolation.sql
 -- Prints one row per check. Every write it attempts is rolled back, so it leaves no data behind.
 --
--- People:  Ada + Ben in Maple House,  Cleo in Birch Flat,  plus an anonymous visitor.
+-- People:  Ada (admin) + Ben in Maple House,  Cleo in Birch Flat,  Dan with no household,
+--          plus an anonymous visitor.
 
 create temp table results (n serial, check_name text, ok boolean, detail text);
 
@@ -231,6 +232,229 @@ begin
   end;
   insert into results (check_name, ok, detail)
   values ('Hook allows a listed email (any case)', coalesce(ok, false) and err is null, coalesce(err, 'returned {} = ' || ok));
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- Phase 3: invites and join requests (Dan has no household; Ada is Maple's admin)
+-- Everything in this block is rolled back at the end.
+-- ---------------------------------------------------------------------------
+create function pg_temp.try(q text) returns text language plpgsql as $$
+declare r text;
+begin
+  execute q into r;
+  return 'ok:' || coalesce(r, 'null');
+exception when others then
+  return 'err:' || sqlerrm;
+end $$;
+
+do $$
+declare
+  ada   constant uuid := '11111111-1111-4111-8111-111111111111';
+  ben   constant uuid := '22222222-2222-4222-8222-222222222222';
+  cleo  constant uuid := '33333333-3333-4333-8333-333333333333';
+  dan   constant uuid := '44444444-4444-4444-8444-444444444444';
+  maple constant text := '''aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa''';
+  a text := 'authenticated';
+  names text[] := '{}';
+  oks boolean[] := '{}';
+  details text[] := '{}';
+  r text;
+  req text;
+  new_token text;
+
+begin
+  begin
+    -- Anonymous visitor opens the invite link
+    perform pg_temp.become('anon', null);
+    r := pg_temp.try('select public.preview_invite(''k7qm-2xpd-9tcf'')::text');
+    perform pg_temp.unbecome();
+    names := array_append(names, 'Anyone can preview a valid invite (name + count only)'::text);
+    oks := oks || (r like '%"status": "ok"%' and r like '%Maple House%' and r like '%"member_count": 2%' and r not like '%email%');
+    details := details || r;
+
+    perform pg_temp.become('anon', null);
+    r := pg_temp.try('select public.preview_invite(''AAAA-BBBB-CCCC'')::text');
+    names := array_append(names, 'Unknown invite shows as invalid'::text);
+    oks := oks || (r = 'ok:{"status": "invalid"}');
+    details := details || r;
+
+    r := pg_temp.try('select public.request_to_join(''K7QM2XPD9TCF'')::text');
+    perform pg_temp.unbecome();
+    names := array_append(names, 'Anonymous visitors cannot request to join'::text);
+    oks := oks || (r like 'err:permission denied%');
+    details := details || r;
+
+    -- Dan asks to join Maple House
+    perform pg_temp.become(a, dan);
+    req := pg_temp.try('select public.request_to_join(''K7QM-2XPD-9TCF'')::text');
+    names := array_append(names, 'Signed-in person can request to join'::text);
+    oks := oks || (req like 'ok:%' and req <> 'ok:null');
+    details := details || req;
+
+    r := pg_temp.try('select public.request_to_join(''K7QM2XPD9TCF'')::text');
+    names := array_append(names, 'Asking twice reuses the same request'::text);
+    oks := oks || (r = req);
+    details := details || r;
+
+    r := pg_temp.try('select public.my_join_request()->>''status'' || '' / '' || (public.my_join_request()->>''household_name'')');
+    names := array_append(names, 'Requester sees their pending request'::text);
+    oks := oks || (r = 'ok:pending / Maple House');
+    details := details || r;
+
+    r := pg_temp.try('select count(*)::text from public.households');
+    perform pg_temp.unbecome();
+    names := array_append(names, 'Requester cannot see the household before approval'::text);
+    oks := oks || (r = 'ok:0');
+    details := details || r;
+
+    -- Only the admin sees and decides requests
+    perform pg_temp.become(a, cleo);
+    r := pg_temp.try('select count(*)::text from public.join_requests');
+    perform pg_temp.unbecome();
+    names := array_append(names, 'Other households cannot see the request'::text);
+    oks := oks || (r = 'ok:0');
+    details := details || r;
+
+    perform pg_temp.become(a, ben);
+    r := pg_temp.try('select count(*)::text from public.join_requests');
+    names := array_append(names, 'Members who are not admin cannot see requests'::text);
+    oks := oks || (r = 'ok:0');
+    details := details || r;
+
+    r := pg_temp.try('select count(*)::text from public.list_join_requests(' || maple || ')');
+    names := array_append(names, 'Members who are not admin cannot list requests'::text);
+    oks := oks || (r like 'err:not_admin%');
+    details := details || r;
+
+    r := pg_temp.try('select public.decide_join_request(' || quote_literal(substr(req, 4)) || ', true)');
+    perform pg_temp.unbecome();
+    names := array_append(names, 'Members who are not admin cannot approve'::text);
+    oks := oks || (r like 'err:not_admin%');
+    details := details || r;
+
+    perform pg_temp.become(a, ada);
+    r := pg_temp.try('select string_agg(display_name || '' <'' || email || ''>'', '','') from public.list_join_requests(' || maple || ')');
+    names := array_append(names, 'Admin sees the request with name and email'::text);
+    oks := oks || (r = 'ok:Dan <dan@seed.housemate.test>');
+    details := details || r;
+
+    r := pg_temp.try('select public.decide_join_request(' || quote_literal(substr(req, 4)) || ', true)');
+    names := array_append(names, 'Admin can approve'::text);
+    oks := oks || (r = 'ok:approved');
+    details := details || r;
+
+    r := pg_temp.try('select public.decide_join_request(' || quote_literal(substr(req, 4)) || ', false)');
+    perform pg_temp.unbecome();
+    names := array_append(names, 'A decided request cannot be decided again'::text);
+    oks := oks || (r like 'err:request_closed%');
+    details := details || r;
+
+    perform pg_temp.become(a, dan);
+    r := pg_temp.try('select string_agg(name, '','') from public.households');
+    names := array_append(names, 'Approved person now sees the household'::text);
+    oks := oks || (r = 'ok:Maple House');
+    details := details || r;
+
+    r := pg_temp.try('select coalesce(public.my_join_request()::text, ''none'')');
+    perform pg_temp.unbecome();
+    names := array_append(names, 'No pending request after approval'::text);
+    oks := oks || (r = 'ok:none');
+    details := details || r;
+
+    -- Invite links
+    perform pg_temp.become(a, ben);
+    r := pg_temp.try('select public.get_invite_link(' || maple || ')');
+    names := array_append(names, 'Any member can get the invite link'::text);
+    oks := oks || (r = 'ok:K7QM2XPD9TCF');
+    details := details || r;
+
+    r := pg_temp.try('select public.reset_invite_link(' || maple || ')');
+    perform pg_temp.unbecome();
+    names := array_append(names, 'Only the admin can reset the link'::text);
+    oks := oks || (r like 'err:not_admin%');
+    details := details || r;
+
+    perform pg_temp.become(a, ada);
+    new_token := pg_temp.try('select public.reset_invite_link(' || maple || ')');
+    r := pg_temp.try('select public.preview_invite(''K7QM2XPD9TCF'')->>''status''');
+    perform pg_temp.unbecome();
+    names := array_append(names, 'Resetting the link revokes the old one'::text);
+    oks := oks || (new_token ~ '^ok:[A-HJ-NP-Z2-9]{12}$' and r = 'ok:revoked');
+    details := details || (new_token || ' / old link: ' || r);
+
+    perform pg_temp.become(a, cleo);
+    r := pg_temp.try('select public.get_invite_link(' || maple || ')');
+    names := array_append(names, 'Outsiders cannot get a household''s link'::text);
+    oks := oks || (r like 'err:not_a_member%');
+    details := details || r;
+
+    r := pg_temp.try('select public.request_to_join(' || quote_literal(substr(new_token, 4)) || ')::text');
+    perform pg_temp.unbecome();
+    names := array_append(names, 'People already in a household cannot request'::text);
+    oks := oks || (r like 'err:already_in_household%');
+    details := details || r;
+
+    -- Leaving and removing
+    perform pg_temp.become(a, ada);
+    r := pg_temp.try('select public.leave_household()::text');
+    names := array_append(names, 'Admin must pick a new admin before leaving'::text);
+    oks := oks || (r like 'err:choose_new_admin%');
+    details := details || r;
+
+    r := pg_temp.try('select public.create_household(''Second home'')::text');
+    names := array_append(names, 'Cannot create a second household'::text);
+    oks := oks || (r like 'err:already_in_household%');
+    details := details || r;
+
+    r := pg_temp.try('select public.remove_member(' || maple || ', ''22222222-2222-4222-8222-222222222222'')::text');
+    names := array_append(names, 'Admin can remove a housemate'::text);
+    oks := oks || (r = 'ok:');  -- void functions return an empty string
+    details := details || r;
+
+    r := pg_temp.try('select public.leave_household(''44444444-4444-4444-8444-444444444444'')::text');
+    perform pg_temp.unbecome();
+    names := array_append(names, 'Admin can leave by handing over to someone'::text);
+    oks := oks || (r = 'ok:');  -- void functions return an empty string
+    details := details || r;
+
+    perform pg_temp.become(a, dan);
+    r := pg_temp.try('select role from public.household_members where user_id = auth.uid()');
+    perform pg_temp.unbecome();
+    names := array_append(names, 'The new admin is now owner'::text);
+    oks := oks || (r = 'ok:owner');
+    details := details || r;
+
+    raise exception 'ROLLBACK_ME';
+  exception when others then
+    if sqlerrm <> 'ROLLBACK_ME' then
+      names := array_append(names, 'Phase 3 checks ran to the end'::text);
+      oks := oks || false;
+      details := details || sqlerrm;
+    end if;
+  end;
+
+  for i in 1..coalesce(array_length(names, 1), 0) loop
+    insert into results (check_name, ok, detail) values (names[i], oks[i], details[i]);
+  end loop;
+end $$;
+
+-- Creating a household makes you its admin with an invite link (rolled back)
+do $$
+declare r text; role_ok boolean; link_ok boolean; err text;
+begin
+  begin
+    perform pg_temp.become('authenticated', '44444444-4444-4444-8444-444444444444');
+    r := public.create_household('  Dan''s place  ')::text;
+    select m.role = 'owner' into role_ok from public.household_members m where m.user_id = auth.uid();
+    select count(*) = 1 into link_ok from public.invites where household_id = r::uuid and kind = 'link';
+    perform pg_temp.unbecome();
+    raise exception 'ROLLBACK_ME';
+  exception when others then
+    if sqlerrm <> 'ROLLBACK_ME' then err := sqlerrm; end if;
+  end;
+  insert into results (check_name, ok, detail)
+  values ('Creator becomes admin and gets an invite link', err is null and role_ok and link_ok,
+          coalesce('error: ' || err, 'owner=' || role_ok || ', link=' || link_ok));
 end $$;
 
 select result, check_name, detail

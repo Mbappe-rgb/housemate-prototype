@@ -5,6 +5,7 @@
 -- Two households so the isolation test can check that they can't see each other:
 --   Maple House: Ada (owner), Ben
 --   Birch Flat:  Cleo (owner)
+--   Dan:         no household yet
 -- Seed users have NO password, so nobody can log in as them. Sign up with your own
 -- allowlisted email to try the app.
 
@@ -25,6 +26,10 @@ values
    now(), now(), now(), '', '', '', ''),
   ('00000000-0000-0000-0000-000000000000', '33333333-3333-4333-8333-333333333333', 'authenticated', 'authenticated',
    'cleo@seed.housemate.test', '{"display_name":"Cleo"}', '{"provider":"email","providers":["email"]}',
+   now(), now(), now(), '', '', '', ''),
+  -- Dan has no household yet (used to test join requests)
+  ('00000000-0000-0000-0000-000000000000', '44444444-4444-4444-8444-444444444444', 'authenticated', 'authenticated',
+   'dan@seed.housemate.test', '{"display_name":"Dan"}', '{"provider":"email","providers":["email"]}',
    now(), now(), now(), '', '', '', '')
 on conflict (id) do nothing;
 

@@ -1,12 +1,18 @@
 import { useMemo, useState, type ReactNode } from 'react'
-import { HouseContext, type House, type HouseActions, type NewBill } from './house'
+import { HouseContext, type House, type HouseActions, type JoinRequest, type NewBill } from './house'
 import { DEMO_MEMBERS, demoBills, demoChores, type DemoState } from './demoData'
 import { withNewPayer, type Bill } from '../../lib/bills'
 import { splitEqual } from '../../lib/money'
 import { todayIn } from '../../lib/dates'
 import { useToast } from '../../components/Toast'
+import { hueFromName } from '../../lib/hue'
 
 const TIMEZONE = 'America/Toronto'
+const CODE_LETTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+const demoCode = () => Array.from({ length: 12 }, () => CODE_LETTERS[Math.floor(Math.random() * 32)]).join('')
+const SAMPLE_REQUESTS: JoinRequest[] = [
+  { id: 'req-tomi', userId: 'tomi', name: 'Tomi', hue: hueFromName('Tomi'), email: 'tomi@example.com', createdAt: '2026-01-01T00:00:00Z' },
+]
 
 /** The prototype's sample household. Everything happens in memory and resets on reload. */
 export function DemoHouseProvider({ state, children }: { state: DemoState; children: ReactNode }) {
@@ -16,6 +22,8 @@ export function DemoHouseProvider({ state, children }: { state: DemoState; child
   const [bills, setBills] = useState(() => demoBills(today, state))
   const [chores, setChores] = useState(() => demoChores(today))
   const [members, setMembers] = useState(DEMO_MEMBERS)
+  const [inviteCode, setInviteCode] = useState('WEBR7K4QM2XP')
+  const [joinRequests, setJoinRequests] = useState(SAMPLE_REQUESTS)
   const me = members[0]
 
   // Reload the sample data when the data state changes in the demo controls
@@ -107,9 +115,32 @@ export function DemoHouseProvider({ state, children }: { state: DemoState; child
         toast('Profile saved')
         return null
       },
-      leaveHousehold: () => toast('In the demo you can’t really leave'),
+      leaveHousehold: async () => {
+        toast('In the demo you can’t really leave')
+        return null
+      },
+      removeMember: async (memberId) => {
+        setMembers((all) => all.filter((m) => m.id !== memberId))
+        toast('Removed from the household')
+        return null
+      },
+      resetInvite: async () => {
+        setInviteCode(demoCode())
+        toast('Link reset. The old link no longer works.')
+      },
+      decideRequest: async (requestId, approve) => {
+        const req = joinRequests.find((r) => r.id === requestId)
+        setJoinRequests((all) => all.filter((r) => r.id !== requestId))
+        if (!req) return
+        if (approve) {
+          setMembers((all) => [...all, { id: req.userId, name: req.name, hue: req.hue, role: 'member', email: req.email ?? undefined }])
+          toast(`${req.name} joined the household 🎉`)
+        } else {
+          toast(`Request from ${req.name} declined`)
+        }
+      },
     }
-  }, [bills, chores, members, me, toast])
+  }, [bills, chores, members, me, toast, joinRequests])
 
   const house: House = {
     mode: 'demo',
@@ -119,7 +150,9 @@ export function DemoHouseProvider({ state, children }: { state: DemoState; child
     today,
     bills,
     chores,
-    inviteCode: 'WEBR7K4QM2XP',
+    inviteCode,
+    isAdmin: true,
+    joinRequests,
     moneyReady: true,
     actions,
   }
