@@ -111,7 +111,7 @@ export function DemoHouseProvider({ state, children }: { state: DemoState; child
       },
       reopenChore: (id) => setChores((all) => all.map((c) => (c.id === id ? { ...c, doneAt: null } : c))),
       addChore: (n) => {
-        setChores((all) => [...all, { id: `chore-${Date.now()}`, doneAt: null, ...n }])
+        setChores((all) => [...all, { id: `chore-${Date.now()}`, doneAt: null, createdBy: me.id, ...n }])
         toast(`${n.title} added`)
       },
       saveProfile: async (edit) => {

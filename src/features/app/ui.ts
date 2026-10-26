@@ -7,6 +7,7 @@ export type AppUI = {
   openAddChore: () => void
   openAddMenu: () => void
   confirmChore: (choreId: string) => void
+  openChore: (choreId: string) => void
   openNotifications: () => void
   openEditProfile: () => void
   confirmLeave: () => void

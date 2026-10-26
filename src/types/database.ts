@@ -190,6 +190,7 @@ export type Database = {
           emoji: string | null
           household_id: string
           id: string
+          previous_id: string | null
           recurrence: string
           title: string
         }
@@ -203,6 +204,7 @@ export type Database = {
           emoji?: string | null
           household_id: string
           id?: string
+          previous_id?: string | null
           recurrence?: string
           title: string
         }
@@ -216,6 +218,7 @@ export type Database = {
           emoji?: string | null
           household_id?: string
           id?: string
+          previous_id?: string | null
           recurrence?: string
           title?: string
         }
@@ -246,6 +249,13 @@ export type Database = {
             columns: ["household_id"]
             isOneToOne: false
             referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chores_previous_id_fkey"
+            columns: ["previous_id"]
+            isOneToOne: true
+            referencedRelation: "chores"
             referencedColumns: ["id"]
           },
         ]
@@ -531,6 +541,7 @@ export type Database = {
       }
       bill_people: { Args: { b: string }; Returns: string[] }
       cancel_join_request: { Args: never; Returns: undefined }
+      complete_chore: { Args: { p_chore: string }; Returns: undefined }
       compute_shares: {
         Args: {
           p_amounts: Json
@@ -558,6 +569,17 @@ export type Database = {
         }
         Returns: string
       }
+      create_chore: {
+        Args: {
+          p_assignee: string
+          p_due_date: string
+          p_emoji: string
+          p_household: string
+          p_recurrence?: string
+          p_title: string
+        }
+        Returns: string
+      }
       create_household: {
         Args: { p_name: string; p_timezone?: string }
         Returns: string
@@ -567,6 +589,7 @@ export type Database = {
         Returns: string
       }
       delete_bill: { Args: { p_bill: string }; Returns: undefined }
+      delete_chore: { Args: { p_chore: string }; Returns: undefined }
       generate_invite_token: { Args: never; Returns: string }
       get_invite_link: { Args: { p_household: string }; Returns: string }
       hook_before_user_created: { Args: { event: Json }; Returns: Json }
@@ -597,6 +620,7 @@ export type Database = {
         Args: { p_household: string; p_user: string }
         Returns: undefined
       }
+      reopen_chore: { Args: { p_chore: string }; Returns: undefined }
       request_to_join: { Args: { p_token: string }; Returns: string }
       reset_invite_link: { Args: { p_household: string }; Returns: string }
       roll_recurring_bills: { Args: { p_household: string }; Returns: number }

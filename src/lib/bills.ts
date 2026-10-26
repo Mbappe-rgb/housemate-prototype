@@ -38,6 +38,7 @@ export type Chore = {
   dueDate: ISODate
   recurrence: 'none' | 'daily' | 'weekly'
   doneAt: string | null
+  createdBy?: string
 }
 
 /** My share of a bill (0 if I'm not on it). */

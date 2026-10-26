@@ -8,6 +8,7 @@ import type { Member } from '../../lib/bills'
 import { useToast } from '../../components/Toast'
 import { LoadingScreen } from '../../components/LoadingScreen'
 import { useLiveBills } from './useLiveBills'
+import { useLiveChores } from './useLiveChores'
 
 type HouseholdRow = { id: string; name: string; timezone: string; currency: string }
 
@@ -16,7 +17,7 @@ const REQUEST_POLL_MS = 20_000
 
 /**
  * The signed-in person's real household, housemates, invite link and (for the admin) join requests.
- * Bills come from the database (Phase 4). Chores are empty until Phase 5.
+ * Bills and chores come from the database through the functions in supabase/migrations.
  */
 export function LiveHouseProvider({ children }: { children: ReactNode }) {
   const auth = useAuth()
@@ -32,6 +33,7 @@ export function LiveHouseProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null)
   const today = todayIn(household?.timezone ?? 'America/Toronto')
   const live = useLiveBills(householdId, userId, today, toast)
+  const liveChores = useLiveChores(householdId, today, toast)
 
   const loadRequests = useCallback(async (hid: string) => {
     const { data, error } = await supabase.rpc('list_join_requests', { p_household: hid })
@@ -110,16 +112,9 @@ export function LiveHouseProvider({ children }: { children: ReactNode }) {
   }, [householdId, isAdmin, loadRequests])
 
   const actions = useMemo<HouseActions>(() => {
-    const notYet = () => toast('Chores arrive in the next update')
     return {
       ...live.actions,
-      completeChore: notYet,
-      reopenChore: notYet,
-      addChore: notYet,
-      deleteChore: async () => {
-        notYet()
-        return null
-      },
+      ...liveChores.actions,
       saveProfile: async (edit) => {
         if (!userId) return 'You’re not signed in.'
         const blankToNull = (v: string) => (v.trim() ? v.trim() : null)
@@ -168,7 +163,7 @@ export function LiveHouseProvider({ children }: { children: ReactNode }) {
         await Promise.all([loadRequests(householdId), approve ? load(householdId) : Promise.resolve()])
       },
     }
-  }, [toast, userId, refreshAuth, householdId, load, loadRequests, joinRequests, live.actions])
+  }, [toast, userId, refreshAuth, householdId, load, loadRequests, joinRequests, live.actions, liveChores.actions])
 
   if (error) {
     return (
@@ -182,7 +177,7 @@ export function LiveHouseProvider({ children }: { children: ReactNode }) {
       </div>
     )
   }
-  if (!household || !members || !userId || !live.bills) return <LoadingScreen />
+  if (!household || !members || !userId || !live.bills || !liveChores.chores) return <LoadingScreen />
 
   const me = members.find((m) => m.id === userId) ?? {
     id: userId,
@@ -197,12 +192,12 @@ export function LiveHouseProvider({ children }: { children: ReactNode }) {
     members,
     today,
     bills: live.bills,
-    chores: [],
+    chores: liveChores.chores,
     inviteCode,
     isAdmin,
     joinRequests: isAdmin ? joinRequests : [],
     moneyReady: true,
-    choresReady: false,
+    choresReady: true,
     actions,
   }
 
