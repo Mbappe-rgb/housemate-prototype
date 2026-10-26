@@ -34,7 +34,7 @@ export function ChoresScreen() {
           ))}
         </Section>
       )}
-      {!house.moneyReady && <Empty>Shared chores arrive in the next update.</Empty>}
+      {!house.choresReady && <Empty>Shared chores arrive in the next update.</Empty>}
       <button type="button" className="btn" style={{ marginTop: 12 }} onClick={ui.openAddChore}>
         Add a chore
       </button>

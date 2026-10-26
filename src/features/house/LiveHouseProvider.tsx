@@ -7,6 +7,7 @@ import { friendlyHouseholdError } from '../../lib/householdErrors'
 import type { Member } from '../../lib/bills'
 import { useToast } from '../../components/Toast'
 import { LoadingScreen } from '../../components/LoadingScreen'
+import { useLiveBills } from './useLiveBills'
 
 type HouseholdRow = { id: string; name: string; timezone: string; currency: string }
 
@@ -15,7 +16,7 @@ const REQUEST_POLL_MS = 20_000
 
 /**
  * The signed-in person's real household, housemates, invite link and (for the admin) join requests.
- * Bills and chores are empty until they're connected to the database in Phases 4 and 5.
+ * Bills come from the database (Phase 4). Chores are empty until Phase 5.
  */
 export function LiveHouseProvider({ children }: { children: ReactNode }) {
   const auth = useAuth()
@@ -29,6 +30,8 @@ export function LiveHouseProvider({ children }: { children: ReactNode }) {
   const [inviteCode, setInviteCode] = useState<string | null>(null)
   const [joinRequests, setJoinRequests] = useState<JoinRequest[]>([])
   const [error, setError] = useState<string | null>(null)
+  const today = todayIn(household?.timezone ?? 'America/Toronto')
+  const live = useLiveBills(householdId, userId, today, toast)
 
   const loadRequests = useCallback(async (hid: string) => {
     const { data, error } = await supabase.rpc('list_join_requests', { p_household: hid })
@@ -107,17 +110,16 @@ export function LiveHouseProvider({ children }: { children: ReactNode }) {
   }, [householdId, isAdmin, loadRequests])
 
   const actions = useMemo<HouseActions>(() => {
-    const notYet = () => toast('Bills and chores arrive in the next update')
+    const notYet = () => toast('Chores arrive in the next update')
     return {
-      markPaid: notYet,
-      undoPaid: notYet,
-      markReceived: notYet,
-      addBill: notYet,
-      saveSplit: notYet,
-      saveBillSettings: notYet,
+      ...live.actions,
       completeChore: notYet,
       reopenChore: notYet,
       addChore: notYet,
+      deleteChore: async () => {
+        notYet()
+        return null
+      },
       saveProfile: async (edit) => {
         if (!userId) return 'You’re not signed in.'
         const blankToNull = (v: string) => (v.trim() ? v.trim() : null)
@@ -166,7 +168,7 @@ export function LiveHouseProvider({ children }: { children: ReactNode }) {
         await Promise.all([loadRequests(householdId), approve ? load(householdId) : Promise.resolve()])
       },
     }
-  }, [toast, userId, refreshAuth, householdId, load, loadRequests, joinRequests])
+  }, [toast, userId, refreshAuth, householdId, load, loadRequests, joinRequests, live.actions])
 
   if (error) {
     return (
@@ -180,7 +182,7 @@ export function LiveHouseProvider({ children }: { children: ReactNode }) {
       </div>
     )
   }
-  if (!household || !members || !userId) return <LoadingScreen />
+  if (!household || !members || !userId || !live.bills) return <LoadingScreen />
 
   const me = members.find((m) => m.id === userId) ?? {
     id: userId,
@@ -193,13 +195,14 @@ export function LiveHouseProvider({ children }: { children: ReactNode }) {
     household,
     me: { ...me, email: auth.session?.user.email },
     members,
-    today: todayIn(household.timezone),
-    bills: [],
+    today,
+    bills: live.bills,
     chores: [],
     inviteCode,
     isAdmin,
     joinRequests: isAdmin ? joinRequests : [],
-    moneyReady: false,
+    moneyReady: true,
+    choresReady: false,
     actions,
   }
 

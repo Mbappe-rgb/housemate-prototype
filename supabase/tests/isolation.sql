@@ -457,6 +457,177 @@ begin
           coalesce('error: ' || err, 'owner=' || role_ok || ', link=' || link_ok));
 end $$;
 
+-- ---------------------------------------------------------------------------
+-- Phase 4: bills (Maple House: Ada is admin; Internet = Ada pays, Ada paid, Ben not;
+-- Hydro = Ben created and pays, $100.01 split 5001/5000, nothing paid). All rolled back.
+-- ---------------------------------------------------------------------------
+do $$
+declare
+  ada   constant uuid := '11111111-1111-4111-8111-111111111111';
+  ben   constant uuid := '22222222-2222-4222-8222-222222222222';
+  cleo  constant uuid := '33333333-3333-4333-8333-333333333333';
+  maple constant text := '''aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa''';
+  internet constant text := '''aaaaaaaa-0000-4000-8000-0000000000b1''';
+  hydro constant text := '''aaaaaaaa-0000-4000-8000-0000000000b2''';
+  a text := 'authenticated';
+  names text[] := '{}';
+  oks boolean[] := '{}';
+  details text[] := '{}';
+  r text;
+  bid text;
+  i int;
+begin
+  begin
+    -- Adding bills
+    perform pg_temp.become(a, ben);
+    bid := pg_temp.try('select public.create_bill(' || maple || ', ''Gas'', ''Gas'', ''🔥'', 10001, current_date + 3, auth.uid())::text');
+    r := pg_temp.try('select string_agg(amount_cents::text, ''/'' order by amount_cents desc) from public.bill_shares where bill_id = '
+                     || quote_literal(substr(bid, 4)));
+    names := array_append(names, 'Equal split: extra cent goes to the earliest member'::text);
+    oks := oks || (bid like 'ok:%' and r = 'ok:5001/5000');
+    details := details || (bid || ' shares ' || r);
+
+    r := pg_temp.try('select public.create_bill(' || maple || ', ''Gas'', ''Gas'', null, 1000, current_date, auth.uid(), ''none'', ''custom'', '
+                     || quote_literal(jsonb_build_object(ada::text, 600, ben::text, 300)::text) || '::jsonb)::text');
+    names := array_append(names, 'Custom split must add up to the total'::text);
+    oks := oks || (r like 'err:split_mismatch%');
+    details := details || r;
+
+    r := pg_temp.try('select public.create_bill(' || maple || ', ''Gas'', ''Gas'', null, 1000, current_date, auth.uid(), ''none'', ''custom'', '
+                     || quote_literal(jsonb_build_object(ada::text, 700, ben::text, 300)::text) || '::jsonb)::text');
+    names := array_append(names, 'Custom split that adds up is accepted'::text);
+    oks := oks || (r like 'ok:%' and r <> 'ok:null');
+    details := details || r;
+
+    r := pg_temp.try('select public.create_bill(' || maple || ', ''Gas'', ''Gas'', null, 1000, current_date, '
+                     || quote_literal(cleo::text) || ')::text');
+    names := array_append(names, 'Payer must be in the household'::text);
+    oks := oks || (r like 'err:payer_not_member%');
+    details := details || r;
+
+    r := pg_temp.try('select public.create_bill(' || maple || ', ''Gas'', ''Gas'', null, 0, current_date, auth.uid())::text');
+    perform pg_temp.unbecome();
+    names := array_append(names, 'Bill total must be more than $0'::text);
+    oks := oks || (r like 'err:invalid_amount%');
+    details := details || r;
+
+    perform pg_temp.become(a, cleo);
+    r := pg_temp.try('select public.create_bill(' || maple || ', ''Sneaky'', ''Other'', null, 1000, current_date, auth.uid())::text');
+    perform pg_temp.unbecome();
+    names := array_append(names, 'Outsiders cannot add bills to a household'::text);
+    oks := oks || (r like 'err:not_a_member%');
+    details := details || r;
+
+    perform pg_temp.become('anon', null);
+    r := pg_temp.try('select public.create_bill(' || maple || ', ''Sneaky'', ''Other'', null, 1000, current_date, null)::text');
+    perform pg_temp.unbecome();
+    names := array_append(names, 'Anonymous visitors cannot add bills'::text);
+    oks := oks || (r like 'err:permission denied%');
+    details := details || r;
+
+    -- Marking paid
+    perform pg_temp.become(a, ben);
+    r := pg_temp.try('select public.set_share_paid(' || internet || ', auth.uid(), true)::text');
+    names := array_append(names, 'You can mark your own share paid'::text);
+    oks := oks || (r = 'ok:');
+    details := details || r;
+
+    r := pg_temp.try('select public.set_share_paid(' || hydro || ', ' || quote_literal(ada::text) || ', true)::text');
+    names := array_append(names, 'The payer can mark someone''s share received'::text);
+    oks := oks || (r = 'ok:');
+    details := details || r;
+
+    r := pg_temp.try('select public.set_share_paid(' || internet || ', ' || quote_literal(ada::text) || ', false)::text');
+    perform pg_temp.unbecome();
+    names := array_append(names, 'Others cannot change someone else''s payment'::text);
+    oks := oks || (r like 'err:not_allowed%');
+    details := details || r;
+
+    perform pg_temp.become(a, cleo);
+    r := pg_temp.try('select public.set_share_paid(' || internet || ', ' || quote_literal(ben::text) || ', false)::text');
+    perform pg_temp.unbecome();
+    names := array_append(names, 'Outsiders cannot touch a household''s bills'::text);
+    oks := oks || (r like 'err:not_found%');
+    details := details || r;
+
+    -- Editing the split (Hydro now has Ada's share paid, so it's locked)
+    perform pg_temp.become(a, ada);
+    r := pg_temp.try('select public.update_bill_split(' || hydro || ', ''equal'')::text');
+    perform pg_temp.unbecome();
+    names := array_append(names, 'Only the creator can edit the split'::text);
+    oks := oks || (r like 'err:not_creator%');
+    details := details || r;
+
+    perform pg_temp.become(a, ben);
+    r := pg_temp.try('select public.update_bill_split(' || hydro || ', ''custom'', '
+                     || quote_literal(jsonb_build_object(ada::text, 6001, ben::text, 4000)::text) || '::jsonb)::text');
+    names := array_append(names, 'Split is locked once a housemate has paid'::text);
+    oks := oks || (r like 'err:split_locked%');
+    details := details || r;
+
+    -- Undo Ada's payment, then the creator can change the split
+    r := pg_temp.try('select public.set_share_paid(' || hydro || ', ' || quote_literal(ada::text) || ', false)::text');
+    r := pg_temp.try('select public.update_bill_split(' || hydro || ', ''custom'', '
+                     || quote_literal(jsonb_build_object(ada::text, 6001, ben::text, 4000)::text) || '::jsonb)::text');
+    names := array_append(names, 'Creator can edit the split while unlocked'::text);
+    oks := oks || (r = 'ok:');
+    details := details || r;
+
+    -- Settings: payer change
+    r := pg_temp.try('select public.update_bill_settings(' || internet || ', auth.uid(), ''monthly'')::text');
+    perform pg_temp.unbecome();
+    names := array_append(names, 'Only the creator or admin can change the payer'::text);
+    oks := oks || (r like 'err:not_allowed%');
+    details := details || r;
+
+    perform pg_temp.become(a, ada);
+    r := pg_temp.try('select public.update_bill_settings(' || internet || ', ' || quote_literal(ben::text) || ', ''monthly'')::text');
+    r := r || ' / paid now: ' || pg_temp.try('select count(*)::text from public.bill_shares where paid_at is not null and bill_id = ' || internet);
+    names := array_append(names, 'Changing the payer clears every payment'::text);
+    oks := oks || (r = 'ok: / paid now: ok:0');
+    details := details || r;
+
+    -- Deleting
+    r := pg_temp.try('select public.set_share_paid(' || internet || ', ' || quote_literal(ada::text) || ', true)::text');
+    r := pg_temp.try('select public.delete_bill(' || internet || ')::text');
+    names := array_append(names, 'Bills with payments cannot be deleted'::text);
+    oks := oks || (r like 'err:bill_has_payments%');
+    details := details || r;
+    perform pg_temp.unbecome();
+
+    perform pg_temp.become(a, ben);
+    r := pg_temp.try('select public.delete_bill(' || hydro || ')::text');
+    perform pg_temp.unbecome();
+    names := array_append(names, 'Creator can delete an unpaid bill'::text);
+    oks := oks || (r = 'ok:');
+    details := details || r;
+
+    -- Monthly bills roll forward (due 40 days ago -> next two months, then nothing)
+    perform pg_temp.become(a, ada);
+    bid := pg_temp.try('select public.create_bill(' || maple || ', ''Phone'', ''Phone'', ''📱'', 9000, current_date - 40, auth.uid(), ''monthly'')::text');
+    r := pg_temp.try('select public.roll_recurring_bills(' || maple || ')::text');
+    r := r || ' then ' || pg_temp.try('select public.roll_recurring_bills(' || maple || ')::text');
+    r := r || ' / ' || pg_temp.try('select count(*)::text || '' bills, '' || count(*) filter (where recurrence = ''monthly'')::text || '' repeating'' from public.bills where series_id = '
+                                   || quote_literal(substr(bid, 4)));
+    perform pg_temp.unbecome();
+    names := array_append(names, 'Monthly bills add the next months, once'::text);
+    oks := oks || (r = 'ok:2 then ok:0 / ok:3 bills, 1 repeating');
+    details := details || r;
+
+    raise exception 'ROLLBACK_ME';
+  exception when others then
+    if sqlerrm <> 'ROLLBACK_ME' then
+      names := array_append(names, 'Phase 4 checks ran to the end'::text);
+      oks := oks || false;
+      details := details || sqlerrm;
+    end if;
+  end;
+
+  for i in 1..coalesce(array_length(names, 1), 0) loop
+    insert into results (check_name, ok, detail) values (names[i], oks[i], details[i]);
+  end loop;
+end $$;
+
 select result, check_name, detail
 from (
   select n, case when ok then 'PASS' else 'FAIL' end as result, check_name, detail
