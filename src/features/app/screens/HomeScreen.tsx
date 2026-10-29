@@ -54,8 +54,13 @@ function Hero() {
       <div className="big">$0</div>
       <span className="chip ok">{total ? 'You’re all settled' : 'Nothing to pay yet'}</span>
       {total > 0 && bar}
-      {!house.moneyReady && (
-        <small style={{ margin: '4px 0 0' }}>Shared bills arrive in the next update. You’ll split them here.</small>
+      {total === 0 && (
+        <>
+          <small style={{ margin: '4px 0 14px' }}>Add rent, internet or hydro and HouseMate splits it for you.</small>
+          <button type="button" className="btn" onClick={ui.openAddBill}>
+            Add your first bill
+          </button>
+        </>
       )}
     </div>
   )

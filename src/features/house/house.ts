@@ -35,6 +35,9 @@ export type HouseActions = {
   undoPaid: (billId: string) => void
   markReceived: (billId: string, memberId: string) => void
   addBill: (bill: NewBill) => void
+  /** creator or admin, only while nothing is paid */
+  deleteBill: (billId: string) => Promise<string | null>
+  deleteChore: (choreId: string) => Promise<string | null>
   saveSplit: (billId: string, mode: 'equal' | 'custom', amounts: Record<string, number>) => void
   saveBillSettings: (billId: string, payerId: string, recurrence: 'none' | 'monthly') => void
   completeChore: (choreId: string) => void
@@ -76,8 +79,10 @@ export type House = {
   isAdmin: boolean
   /** pending requests to join (only loaded for the admin) */
   joinRequests: JoinRequest[]
-  /** false while bills and chores aren't connected to the database yet (Phases 4-5) */
+  /** false while bills aren't connected to the database yet */
   moneyReady: boolean
+  /** false while chores aren't connected to the database yet */
+  choresReady: boolean
   actions: HouseActions
 }
 

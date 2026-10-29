@@ -99,6 +99,16 @@ export function DemoHouseProvider({ state, children }: { state: DemoState; child
         setChores((all) => all.map((c) => (c.id === id ? { ...c, doneAt: new Date().toISOString() } : c)))
         toast(chore?.assigneeId === me.id ? `Nice work, ${me.name}! 🎉` : 'Marked as done')
       },
+      deleteBill: async (id) => {
+        setBills((all) => all.filter((b) => b.id !== id))
+        toast('Bill deleted')
+        return null
+      },
+      deleteChore: async (id) => {
+        setChores((all) => all.filter((c) => c.id !== id))
+        toast('Chore deleted')
+        return null
+      },
       reopenChore: (id) => setChores((all) => all.map((c) => (c.id === id ? { ...c, doneAt: null } : c))),
       addChore: (n) => {
         setChores((all) => [...all, { id: `chore-${Date.now()}`, doneAt: null, ...n }])
@@ -154,6 +164,7 @@ export function DemoHouseProvider({ state, children }: { state: DemoState; child
     isAdmin: true,
     joinRequests,
     moneyReady: true,
+    choresReady: true,
     actions,
   }
 

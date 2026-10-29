@@ -34,7 +34,7 @@ export function BillSheet({ billId, onClose }: { billId: string; onClose: () => 
             onEditSplit={() => (isSplitLocked(bill) ? setLocked(true) : setView('split'))}
           />
         )}
-        {view === 'settings' && <Settings bill={bill} back={() => setView('detail')} />}
+        {view === 'settings' && <Settings bill={bill} back={() => setView('detail')} onDeleted={onClose} />}
         {view === 'payto' && <PayTo bill={bill} back={() => setView('detail')} />}
         {view === 'split' && <EditSplit bill={bill} back={() => setView('detail')} />}
       </Sheet>
@@ -89,9 +89,11 @@ function Detail({
           <b>{bill.name}</b>
           <small className={late ? 'pd' : ''}>{capitalize(dueText(bill.dueDate, house.today))}</small>
         </div>
-        <button type="button" className="ib sm" onClick={() => go('settings')} aria-label="Bill settings">
-          <Icon name="settings" size={18} />
-        </button>
+        {(bill.createdBy === me || house.isAdmin) && (
+          <button type="button" className="ib sm" onClick={() => go('settings')} aria-label="Bill settings">
+            <Icon name="settings" size={18} />
+          </button>
+        )}
       </div>
 
       <h4>Bill breakdown</h4>
@@ -190,6 +192,7 @@ function Detail({
 
       {todo ? (
         <>
+          {house.mode === 'demo' && (
           <label className={`up ${receipt ? 'on' : ''}`} style={{ marginTop: 14 }}>
             <input
               type="file"
@@ -205,9 +208,11 @@ function Detail({
               <small>{receipt ? 'Tap to replace' : 'Optional, a photo or PDF works'}</small>
             </span>
           </label>
+          )}
           <button
             type="button"
             className="btn"
+            style={{ marginTop: 14 }}
             onClick={() => {
               house.actions.markPaid(bill.id, receipt)
               onClose()
@@ -243,10 +248,13 @@ function Detail({
   )
 }
 
-function Settings({ bill, back }: { bill: Bill; back: () => void }) {
+function Settings({ bill, back, onDeleted }: { bill: Bill; back: () => void; onDeleted: () => void }) {
   const house = useHouse()
   const [payerId, setPayerId] = useState(bill.payerId)
   const [monthly, setMonthly] = useState(bill.recurrence === 'monthly')
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const anyPaid = Object.values(bill.shares).some((s) => s.paidAt)
   const payerName = payerId === house.me.id ? 'you' : (memberById(house, payerId)?.name ?? 'them')
   return (
     <>
@@ -281,6 +289,30 @@ function Settings({ bill, back }: { bill: Bill; back: () => void }) {
       <button type="button" className="lk" onClick={back}>
         Cancel
       </button>
+      {anyPaid ? (
+        <small className="hint" style={{ textAlign: 'center' }}>
+          Bills with payments can’t be deleted.
+        </small>
+      ) : confirmDelete ? (
+        <button
+          type="button"
+          className="btn danger"
+          style={{ marginTop: 12 }}
+          disabled={deleting}
+          onClick={async () => {
+            setDeleting(true)
+            const err = await house.actions.deleteBill(bill.id)
+            setDeleting(false)
+            if (!err) onDeleted()
+          }}
+        >
+          {deleting ? 'Deleting…' : `Yes, delete ${bill.name}`}
+        </button>
+      ) : (
+        <button type="button" className="lk" style={{ color: 'var(--warn)' }} onClick={() => setConfirmDelete(true)}>
+          Delete bill
+        </button>
+      )}
     </>
   )
 }

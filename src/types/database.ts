@@ -529,7 +529,35 @@ export type Database = {
         Args: { p_request: string }
         Returns: undefined
       }
+      bill_people: { Args: { b: string }; Returns: string[] }
       cancel_join_request: { Args: never; Returns: undefined }
+      compute_shares: {
+        Args: {
+          p_amounts: Json
+          p_mode: string
+          p_people: string[]
+          p_total: number
+        }
+        Returns: {
+          amount_cents: number
+          user_id: string
+        }[]
+      }
+      create_bill: {
+        Args: {
+          p_amounts?: Json
+          p_category: string
+          p_due_date: string
+          p_emoji: string
+          p_household: string
+          p_name: string
+          p_payer: string
+          p_recurrence?: string
+          p_split_mode?: string
+          p_total_cents: number
+        }
+        Returns: string
+      }
       create_household: {
         Args: { p_name: string; p_timezone?: string }
         Returns: string
@@ -538,9 +566,11 @@ export type Database = {
         Args: { p_approve: boolean; p_request: string }
         Returns: string
       }
+      delete_bill: { Args: { p_bill: string }; Returns: undefined }
       generate_invite_token: { Args: never; Returns: string }
       get_invite_link: { Args: { p_household: string }; Returns: string }
       hook_before_user_created: { Args: { event: Json }; Returns: Json }
+      household_today: { Args: { h: string }; Returns: string }
       invite_status: {
         Args: { inv: Database["public"]["Tables"]["invites"]["Row"] }
         Returns: string
@@ -559,6 +589,7 @@ export type Database = {
           user_id: string
         }[]
       }
+      member_order: { Args: { h: string }; Returns: string[] }
       my_join_request: { Args: never; Returns: Json }
       new_link_invite: { Args: { creator: string; h: string }; Returns: string }
       preview_invite: { Args: { p_token: string }; Returns: Json }
@@ -568,7 +599,20 @@ export type Database = {
       }
       request_to_join: { Args: { p_token: string }; Returns: string }
       reset_invite_link: { Args: { p_household: string }; Returns: string }
+      roll_recurring_bills: { Args: { p_household: string }; Returns: number }
+      set_share_paid: {
+        Args: { p_bill: string; p_paid: boolean; p_user: string }
+        Returns: undefined
+      }
       shares_household: { Args: { other: string }; Returns: boolean }
+      update_bill_settings: {
+        Args: { p_bill: string; p_payer: string; p_recurrence: string }
+        Returns: undefined
+      }
+      update_bill_split: {
+        Args: { p_amounts?: Json; p_bill: string; p_split_mode: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
