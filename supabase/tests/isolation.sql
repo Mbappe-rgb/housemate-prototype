@@ -628,6 +628,107 @@ begin
   end loop;
 end $$;
 
+-- ---------------------------------------------------------------------------
+-- Phase 5: chores (Maple House: "Take out recycling" is weekly, due today, for Ben, created by Ada)
+-- All rolled back.
+-- ---------------------------------------------------------------------------
+do $$
+declare
+  ada   constant uuid := '11111111-1111-4111-8111-111111111111';
+  ben   constant uuid := '22222222-2222-4222-8222-222222222222';
+  cleo  constant uuid := '33333333-3333-4333-8333-333333333333';
+  maple constant text := '''aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa''';
+  recycling constant text := '''aaaaaaaa-0000-4000-8000-0000000000c1''';
+  a text := 'authenticated';
+  names text[] := '{}';
+  oks boolean[] := '{}';
+  details text[] := '{}';
+  r text;
+  cid text;
+  i int;
+begin
+  begin
+    perform pg_temp.become(a, ben);
+    r := pg_temp.try('select public.create_chore(' || maple || ', ''Water plants'', ''🪴'', ' || quote_literal(ada::text) || ', current_date, ''none'')::text');
+    names := array_append(names, 'Any member can add a chore for a housemate'::text);
+    oks := oks || (r like 'ok:%' and r <> 'ok:null');
+    details := details || r;
+
+    r := pg_temp.try('select public.create_chore(' || maple || ', ''Water plants'', null, ' || quote_literal(cleo::text) || ', current_date)::text');
+    names := array_append(names, 'Chores can only be assigned to housemates'::text);
+    oks := oks || (r like 'err:assignee_not_member%');
+    details := details || r;
+
+    -- Completing a weekly chore creates next week's
+    r := pg_temp.try('select public.complete_chore(' || recycling || ')::text');
+    r := r || ' / ' || pg_temp.try('select (n.due_date - o.due_date)::text || '' days later, '' || n.recurrence from public.chores n join public.chores o on o.id = n.previous_id where n.previous_id = ' || recycling);
+    names := array_append(names, 'Ticking a weekly chore adds next week''s'::text);
+    oks := oks || (r = 'ok: / ok:7 days later, weekly');
+    details := details || r;
+
+    r := pg_temp.try('select public.complete_chore(' || recycling || ')::text');
+    r := r || ' / ' || pg_temp.try('select count(*)::text from public.chores where title = ''Take out recycling''');
+    names := array_append(names, 'Ticking twice doesn''t add another'::text);
+    oks := oks || (r = 'ok: / ok:2');
+    details := details || r;
+
+    r := pg_temp.try('select public.reopen_chore(' || recycling || ')::text');
+    r := r || ' / ' || pg_temp.try('select count(*)::text || '' left, done='' || bool_or(done_at is not null)::text from public.chores where title = ''Take out recycling''');
+    names := array_append(names, 'Undo reopens it and removes the next repeat'::text);
+    oks := oks || (r = 'ok: / ok:1 left, done=false');
+    details := details || r;
+
+    -- Overdue daily chores repeat from today, not in the past
+    cid := pg_temp.try('select public.create_chore(' || maple || ', ''Feed cat'', ''🐶'', auth.uid(), current_date - 5, ''daily'')::text');
+    r := pg_temp.try('select public.complete_chore(' || quote_literal(substr(cid, 4)) || ')::text');
+    -- "today" is in the household's time zone (Toronto), not the database's UTC date
+    r := r || ' / ' || pg_temp.try('select (due_date - (now() at time zone ''America/Toronto'')::date)::text from public.chores where previous_id = ' || quote_literal(substr(cid, 4)));
+    names := array_append(names, 'An overdue daily chore repeats from today'::text);
+    oks := oks || (r = 'ok: / ok:0');
+    details := details || r;
+
+    r := pg_temp.try('select public.delete_chore(' || recycling || ')::text');
+    perform pg_temp.unbecome();
+    names := array_append(names, 'Only the creator or admin can delete a chore'::text);
+    oks := oks || (r like 'err:not_allowed%');
+    details := details || r;
+
+    perform pg_temp.become(a, ada);
+    r := pg_temp.try('select public.delete_chore(' || recycling || ')::text');
+    perform pg_temp.unbecome();
+    names := array_append(names, 'Creator can delete a chore'::text);
+    oks := oks || (r = 'ok:');
+    details := details || r;
+
+    perform pg_temp.become(a, cleo);
+    r := pg_temp.try('select public.complete_chore(''aaaaaaaa-0000-4000-8000-0000000000c1'')::text');
+    r := r || ' / ' || pg_temp.try('select public.create_chore(' || maple || ', ''Sneaky'', null, auth.uid(), current_date)::text');
+    perform pg_temp.unbecome();
+    names := array_append(names, 'Outsiders cannot touch a household''s chores'::text);
+    oks := oks || (r like 'err:not_found% / err:not_a_member%');
+    details := details || r;
+
+    perform pg_temp.become('anon', null);
+    r := pg_temp.try('select public.complete_chore(''aaaaaaaa-0000-4000-8000-0000000000c1'')::text');
+    perform pg_temp.unbecome();
+    names := array_append(names, 'Anonymous visitors cannot touch chores'::text);
+    oks := oks || (r like 'err:permission denied%');
+    details := details || r;
+
+    raise exception 'ROLLBACK_ME';
+  exception when others then
+    if sqlerrm <> 'ROLLBACK_ME' then
+      names := array_append(names, 'Phase 5 checks ran to the end'::text);
+      oks := oks || false;
+      details := details || sqlerrm;
+    end if;
+  end;
+
+  for i in 1..coalesce(array_length(names, 1), 0) loop
+    insert into results (check_name, ok, detail) values (names[i], oks[i], details[i]);
+  end loop;
+end $$;
+
 select result, check_name, detail
 from (
   select n, case when ok then 'PASS' else 'FAIL' end as result, check_name, detail

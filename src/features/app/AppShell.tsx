@@ -8,6 +8,7 @@ import { BillSheet } from './sheets/BillSheet'
 import { AddBillSheet } from './sheets/AddBillSheet'
 import { AddChoreSheet } from './sheets/AddChoreSheet'
 import { EditProfileSheet } from './sheets/EditProfileSheet'
+import { ChoreSheet } from './sheets/ChoreSheet'
 import { LeaveDialog, RemoveMemberDialog } from './LeaveDialogs'
 import { JoinRequestList } from './JoinRequests'
 
@@ -25,6 +26,7 @@ type Open =
   | { kind: 'addChore' }
   | { kind: 'menu' }
   | { kind: 'chore'; id: string }
+  | { kind: 'choreDetail'; id: string }
   | { kind: 'profile' }
   | { kind: 'leave' }
   | { kind: 'remove'; id: string }
@@ -44,6 +46,7 @@ export function AppShell() {
       openAddChore: () => setOpen({ kind: 'addChore' }),
       openAddMenu: () => setOpen({ kind: 'menu' }),
       confirmChore: (id) => setOpen({ kind: 'chore', id }),
+      openChore: (id) => setOpen({ kind: 'choreDetail', id }),
       openNotifications: () => setOpen({ kind: 'notifications' }),
       openEditProfile: () => setOpen({ kind: 'profile' }),
       confirmLeave: () => setOpen({ kind: 'leave' }),
@@ -93,6 +96,7 @@ export function AppShell() {
       {open?.kind === 'addBill' && <AddBillSheet onClose={close} />}
       {open?.kind === 'addChore' && <AddChoreSheet onClose={close} />}
       {open?.kind === 'profile' && <EditProfileSheet onClose={close} />}
+      {open?.kind === 'choreDetail' && <ChoreSheet choreId={open.id} onClose={close} />}
       {chore && (
         <Dialog label="Confirm chore done" onClose={close}>
           <div className="bg" aria-hidden="true">

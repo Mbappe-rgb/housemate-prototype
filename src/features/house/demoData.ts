@@ -74,6 +74,7 @@ export function demoChores(today: ISODate): Chore[] {
     dueDate: addDays(today, inDays),
     recurrence: 'weekly',
     doneAt: null,
+    createdBy: 'moyin',
   })
   return [
     c('bins', 'Take out the bins', '🗑️', 'moyin', 1),

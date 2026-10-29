@@ -111,13 +111,16 @@ export function ChoreRow({ chore }: { chore: Chore }) {
   const done = !!chore.doneAt
   return (
     <div className={`row ${done ? 'dn' : ''}`}>
-      <Avatar name={who?.name ?? '?'} hue={who?.hue ?? 0} size={48} />
-      <div className="tx">
-        <b>{chore.title}</b>
-        <small>
-          {nameFor(house, chore.assigneeId)}, {dayName(chore.dueDate, house.today).toLowerCase()}
-        </small>
-      </div>
+      <button type="button" className="row-main" onClick={() => ui.openChore(chore.id)}>
+        <Avatar name={who?.name ?? '?'} hue={who?.hue ?? 0} size={48} />
+        <span className="tx">
+          <b>{chore.title}</b>
+          <small>
+            {nameFor(house, chore.assigneeId)}, {dayName(chore.dueDate, house.today).toLowerCase()}
+            {chore.recurrence !== 'none' && ` · ${chore.recurrence}`}
+          </small>
+        </span>
+      </button>
       <button
         type="button"
         className={`ck ${done ? 'on' : ''}`}
