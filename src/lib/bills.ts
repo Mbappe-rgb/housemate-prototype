@@ -12,7 +12,7 @@ export type Member = {
   bankName?: string | null
 }
 
-export type Share = { amountCents: number; paidAt: string | null }
+export type Share = { amountCents: number; paidAt: string | null; receiptPath?: string | null }
 
 export type Bill = {
   id: string
@@ -27,7 +27,6 @@ export type Bill = {
   splitMode: 'equal' | 'custom'
   /** one per member; for the payer, paidAt means "I paid the provider" */
   shares: Record<string, Share>
-  receiptName?: string | null
 }
 
 export type Chore = {
@@ -95,6 +94,6 @@ export function doneCount(bills: Bill[], me: string): number {
 /** Changing the payer clears every paid mark (prototype rule, enforced by the database later). */
 export function withNewPayer(bill: Bill, payerId: string): Bill {
   if (payerId === bill.payerId) return bill
-  const shares = Object.fromEntries(Object.entries(bill.shares).map(([id, s]) => [id, { ...s, paidAt: null }]))
-  return { ...bill, payerId, shares, receiptName: null }
+  const shares = Object.fromEntries(Object.entries(bill.shares).map(([id, s]) => [id, { ...s, paidAt: null, receiptPath: null }]))
+  return { ...bill, payerId, shares }
 }

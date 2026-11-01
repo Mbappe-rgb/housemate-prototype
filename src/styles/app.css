@@ -447,3 +447,20 @@ button.tg { cursor: pointer; padding: 9px 13px; }
   flex: 1; display: flex; align-items: center; gap: 12px; min-width: 0; padding: 0; border: 0;
   background: none; font: inherit; color: inherit; text-align: left; cursor: pointer;
 }
+
+/* ---------- Loading placeholders ---------- */
+.sk {
+  display: block; width: 100%; background: var(--soft); position: relative; overflow: hidden; border-radius: 10px;
+}
+.sk::after {
+  content: ''; position: absolute; inset: 0; transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--card) 70%, transparent), transparent);
+  animation: shimmer 1.4s infinite;
+}
+@keyframes shimmer { to { transform: translateX(100%); } }
+
+/* ---------- Offline banner ---------- */
+.offline {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 30; padding: calc(8px + env(safe-area-inset-top)) 16px 8px;
+  background: var(--warn); color: #fff; font-size: 13px; font-weight: 600; text-align: center;
+}

@@ -49,7 +49,7 @@ on conflict do nothing;
 insert into public.invites (id, household_id, token, kind, created_by, expires_at, max_uses) values
   ('aaaaaaaa-0000-4000-8000-000000000001', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'K7QM2XPD9TCF', 'link',
    '11111111-1111-4111-8111-111111111111', now() + interval '7 days', 10)
-on conflict (id) do nothing;
+on conflict (id) do update set expires_at = excluded.expires_at, revoked_at = null, uses = 0;
 
 -- Bills (shares must add up to the total; extra cents go to the earliest member)
 insert into public.bills (id, household_id, name, category, emoji, total_cents, due_date, payer_id, created_by, recurrence) values

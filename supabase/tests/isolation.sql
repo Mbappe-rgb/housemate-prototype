@@ -264,6 +264,10 @@ declare
 
 begin
   begin
+    -- The seed invite may have expired since seeding: renew it for this test
+    update public.invites set expires_at = now() + interval '7 days', revoked_at = null, uses = 0
+     where token = 'K7QM2XPD9TCF';
+
     -- Anonymous visitor opens the invite link
     perform pg_temp.become('anon', null);
     r := pg_temp.try('select public.preview_invite(''k7qm-2xpd-9tcf'')::text');
@@ -605,13 +609,14 @@ begin
     -- Monthly bills roll forward (due 40 days ago -> next two months, then nothing)
     perform pg_temp.become(a, ada);
     bid := pg_temp.try('select public.create_bill(' || maple || ', ''Phone'', ''Phone'', ''📱'', 9000, current_date - 40, auth.uid(), ''monthly'')::text');
-    r := pg_temp.try('select public.roll_recurring_bills(' || maple || ')::text');
+    -- (other monthly bills in Maple may roll too, so count only this series)
+    r := pg_temp.try('select (public.roll_recurring_bills(' || maple || ') >= 2)::text');
     r := r || ' then ' || pg_temp.try('select public.roll_recurring_bills(' || maple || ')::text');
     r := r || ' / ' || pg_temp.try('select count(*)::text || '' bills, '' || count(*) filter (where recurrence = ''monthly'')::text || '' repeating'' from public.bills where series_id = '
                                    || quote_literal(substr(bid, 4)));
     perform pg_temp.unbecome();
     names := array_append(names, 'Monthly bills add the next months, once'::text);
-    oks := oks || (r = 'ok:2 then ok:0 / ok:3 bills, 1 repeating');
+    oks := oks || (r = 'ok:true then ok:0 / ok:3 bills, 1 repeating');
     details := details || r;
 
     raise exception 'ROLLBACK_ME';
@@ -719,6 +724,117 @@ begin
   exception when others then
     if sqlerrm <> 'ROLLBACK_ME' then
       names := array_append(names, 'Phase 5 checks ran to the end'::text);
+      oks := oks || false;
+      details := details || sqlerrm;
+    end if;
+  end;
+
+  for i in 1..coalesce(array_length(names, 1), 0) loop
+    insert into results (check_name, ok, detail) values (names[i], oks[i], details[i]);
+  end loop;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- Phase 6: live-update channels, receipts and the nightly job. All rolled back.
+-- ---------------------------------------------------------------------------
+do $$
+declare
+  ada   constant uuid := '11111111-1111-4111-8111-111111111111';
+  ben   constant uuid := '22222222-2222-4222-8222-222222222222';
+  cleo  constant uuid := '33333333-3333-4333-8333-333333333333';
+  dan   constant uuid := '44444444-4444-4444-8444-444444444444';
+  maple constant text := 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+  birch constant text := 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+  internet constant text := 'aaaaaaaa-0000-4000-8000-0000000000b1';
+  a text := 'authenticated';
+  names text[] := '{}';
+  oks boolean[] := '{}';
+  details text[] := '{}';
+  r text;
+  i int;
+  ben_path text := maple || '/' || internet || '/' || ben || '-1730000000.jpg';
+begin
+  begin
+    -- Channels
+    perform pg_temp.become(a, ben);
+    r := pg_temp.try('select public.can_listen(''household:' || maple || ''')::text || '','' || public.can_listen(''household:' || birch || ''')::text || '','' || public.can_listen(''user:' || ben || ''')::text || '','' || public.can_listen(''user:' || ada || ''')::text || '','' || public.can_listen(''household:not-a-uuid'')::text');
+    perform pg_temp.unbecome();
+    names := array_append(names, 'Members hear only their household and their own channel'::text);
+    oks := oks || (r = 'ok:true,false,true,false,false');
+    details := details || r;
+
+    perform pg_temp.become(a, dan);
+    r := pg_temp.try('select public.can_listen(''household:' || maple || ''')::text || '','' || public.can_listen(''user:' || dan || ''')::text');
+    perform pg_temp.unbecome();
+    names := array_append(names, 'Someone waiting for approval hears only their own channel'::text);
+    oks := oks || (r = 'ok:false,true');
+    details := details || r;
+
+    perform pg_temp.become('anon', null);
+    r := pg_temp.try('select public.can_listen(''household:' || maple || ''')::text');
+    perform pg_temp.unbecome();
+    names := array_append(names, 'Anonymous visitors cannot listen to anything'::text);
+    oks := oks || (r like 'err:permission denied%');
+    details := details || r;
+
+    -- Receipts
+    perform pg_temp.become(a, ben);
+    r := pg_temp.try('select public.can_upload_receipt(' || quote_literal(ben_path) || ')::text || '','' ||'
+                     || ' public.can_upload_receipt(' || quote_literal(maple || '/' || internet || '/' || ada || '-1.jpg') || ')::text || '','' ||'
+                     || ' public.can_upload_receipt(' || quote_literal(birch || '/' || internet || '/' || ben || '-1.jpg') || ')::text || '','' ||'
+                     || ' public.can_upload_receipt(''../../etc/passwd'')::text');
+    names := array_append(names, 'You can upload only your own receipt, in the right folder'::text);
+    oks := oks || (r = 'ok:true,false,false,false');
+    details := details || r;
+
+    r := pg_temp.try('select public.attach_receipt(' || quote_literal(internet) || ', ' || quote_literal(ben_path) || ')::text');
+    r := r || ' / ' || pg_temp.try('select receipt_path from public.bill_shares where bill_id = ' || quote_literal(internet) || ' and user_id = auth.uid()');
+    names := array_append(names, 'You can attach your receipt to your share'::text);
+    oks := oks || (r = 'ok: / ok:' || ben_path);
+    details := details || r;
+
+    r := pg_temp.try('select public.attach_receipt(' || quote_literal(internet) || ', ' || quote_literal(maple || '/' || internet || '/' || ada || '-1.jpg') || ')::text');
+    perform pg_temp.unbecome();
+    names := array_append(names, 'You cannot attach someone else''s receipt'::text);
+    oks := oks || (r like 'err:invalid_receipt_path%');
+    details := details || r;
+
+    perform pg_temp.become(a, cleo);
+    r := pg_temp.try('select public.can_read_receipt(' || quote_literal(ben_path) || ')::text || '','' || public.can_upload_receipt(' || quote_literal(maple || '/' || internet || '/' || cleo || '-1.jpg') || ')::text');
+    perform pg_temp.unbecome();
+    names := array_append(names, 'Other households cannot view or upload receipts'::text);
+    oks := oks || (r = 'ok:false,false');
+    details := details || r;
+
+    -- A receipt file in storage: housemates see it, others don't
+    insert into storage.objects (bucket_id, name, owner_id) values ('receipts', ben_path, ben::text);
+    perform pg_temp.become(a, ada);
+    r := pg_temp.try('select count(*)::text from storage.objects where bucket_id = ''receipts''');
+    perform pg_temp.unbecome();
+    perform pg_temp.become(a, cleo);
+    r := r || ' / ' || pg_temp.try('select count(*)::text from storage.objects where bucket_id = ''receipts''');
+    perform pg_temp.unbecome();
+    names := array_append(names, 'Receipt files are visible to housemates only'::text);
+    oks := oks || (r = 'ok:1 / ok:0');
+    details := details || r;
+
+    -- Nightly job
+    perform pg_temp.become(a, ada);
+    r := pg_temp.try('select public.roll_all_recurring_bills()::text');
+    perform pg_temp.unbecome();
+    names := array_append(names, 'App users cannot run the nightly job'::text);
+    oks := oks || (r like 'err:permission denied%');
+    details := details || r;
+
+    r := (select count(*)::text from cron.job where jobname = 'roll-recurring-bills' and active);
+    names := array_append(names, 'Nightly monthly-bill job is scheduled'::text);
+    oks := oks || (r = '1');
+    details := details || ('active jobs: ' || r);
+
+    raise exception 'ROLLBACK_ME';
+  exception when others then
+    if sqlerrm <> 'ROLLBACK_ME' then
+      names := array_append(names, 'Phase 6 checks ran to the end'::text);
       oks := oks || false;
       details := details || sqlerrm;
     end if;

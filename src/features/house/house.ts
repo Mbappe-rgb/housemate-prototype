@@ -30,8 +30,18 @@ export type ProfileEdit = {
   bankName: string
 }
 
+export type Settings = {
+  theme: string
+  notifyEnabled: boolean
+  notifyBills: boolean
+  notifyChores: boolean
+}
+
 export type HouseActions = {
-  markPaid: (billId: string, receiptName?: string | null) => void
+  /** theme and notification switches, saved to my profile */
+  saveSettings: (change: Partial<Settings>) => void
+  /** optionally with a receipt photo or PDF */
+  markPaid: (billId: string, receipt?: File | null) => void
   undoPaid: (billId: string) => void
   markReceived: (billId: string, memberId: string) => void
   addBill: (bill: NewBill) => void
@@ -75,6 +85,7 @@ export type House = {
   bills: Bill[]
   chores: Chore[]
   inviteCode: string | null
+  settings: Settings
   /** I'm the household's owner ("Admin") */
   isAdmin: boolean
   /** pending requests to join (only loaded for the admin) */

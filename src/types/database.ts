@@ -539,7 +539,14 @@ export type Database = {
         Args: { p_request: string }
         Returns: undefined
       }
+      attach_receipt: {
+        Args: { p_bill: string; p_path: string }
+        Returns: undefined
+      }
       bill_people: { Args: { b: string }; Returns: string[] }
+      can_listen: { Args: { p_topic: string }; Returns: boolean }
+      can_read_receipt: { Args: { p_name: string }; Returns: boolean }
+      can_upload_receipt: { Args: { p_name: string }; Returns: boolean }
       cancel_join_request: { Args: never; Returns: undefined }
       complete_chore: { Args: { p_chore: string }; Returns: undefined }
       compute_shares: {
@@ -616,6 +623,10 @@ export type Database = {
       my_join_request: { Args: never; Returns: Json }
       new_link_invite: { Args: { creator: string; h: string }; Returns: string }
       preview_invite: { Args: { p_token: string }; Returns: Json }
+      receipt_path_parts: {
+        Args: { p_name: string }
+        Returns: Record<string, unknown>
+      }
       remove_member: {
         Args: { p_household: string; p_user: string }
         Returns: undefined
@@ -623,6 +634,8 @@ export type Database = {
       reopen_chore: { Args: { p_chore: string }; Returns: undefined }
       request_to_join: { Args: { p_token: string }; Returns: string }
       reset_invite_link: { Args: { p_household: string }; Returns: string }
+      roll_all_recurring_bills: { Args: never; Returns: number }
+      roll_household_bills: { Args: { p_household: string }; Returns: number }
       roll_recurring_bills: { Args: { p_household: string }; Returns: number }
       set_share_paid: {
         Args: { p_bill: string; p_paid: boolean; p_user: string }
