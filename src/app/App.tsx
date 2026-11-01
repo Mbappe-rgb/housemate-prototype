@@ -1,8 +1,9 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
-import { AuthProvider, useAuth } from './auth'
+import { AuthProvider } from './auth'
 import { Gate } from './Gate'
 import { useTheme } from './theme'
 import { ToastProvider } from '../components/Toast'
+import { OfflineBanner } from '../components/OfflineBanner'
 import { WelcomePage } from '../features/auth/WelcomePage'
 import { SignUpPage } from '../features/auth/SignUpPage'
 import { LogInPage } from '../features/auth/LogInPage'
@@ -14,6 +15,7 @@ import { CreateHouseholdPage } from '../features/onboarding/CreateHouseholdPage'
 import { JoinCodePage } from '../features/onboarding/JoinCodePage'
 import { JoinPage } from '../features/invites/JoinPage'
 import { LiveHouseProvider } from '../features/house/LiveHouseProvider'
+import { useHouse } from '../features/house/house'
 import { AppShell } from '../features/app/AppShell'
 import { HomeScreen } from '../features/app/screens/HomeScreen'
 import { BillsScreen } from '../features/app/screens/BillsScreen'
@@ -38,19 +40,25 @@ function appScreens() {
 }
 
 function LiveApp() {
-  const { profile } = useAuth()
-  useTheme(profile?.theme)
   return (
     <LiveHouseProvider>
+      <LiveTheme />
       <AppShell />
     </LiveHouseProvider>
   )
+}
+
+/** The theme saved in my profile (or the one I just picked) */
+function LiveTheme() {
+  useTheme(useHouse().settings.theme)
+  return null
 }
 
 export default function App() {
   return (
     <AuthProvider>
       <ToastProvider>
+        <OfflineBanner />
         <BrowserRouter>
           <Routes>
             {/* Logged out */}

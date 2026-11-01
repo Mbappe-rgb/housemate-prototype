@@ -80,7 +80,7 @@ export function BillRow({ bill, long = false }: { bill: Bill; long?: boolean }) 
   const late = todo && daysBetween(house.today, bill.dueDate) < 0
   const paidCount = Object.entries(bill.shares).filter(([id, s]) => id !== bill.payerId && s.paidAt).length
   const payer = memberById(house, bill.payerId)
-  const status = todo ? capitalize(dueText(bill.dueDate, house.today)) : iPay ? 'You paid it' : bill.receiptName ? 'Paid, receipt attached' : 'Paid'
+  const status = todo ? capitalize(dueText(bill.dueDate, house.today)) : iPay ? 'You paid it' : bill.shares[me]?.receiptPath ? 'Paid, receipt attached' : 'Paid'
 
   return (
     <button type="button" className={`row ${todo ? '' : 'dn'}`} onClick={() => ui.openBill(bill.id)}>

@@ -23,7 +23,7 @@ export function DemoApp() {
   useTheme(theme)
 
   return (
-    <DemoHouseProvider state={state}>
+    <DemoHouseProvider state={state} theme={theme} onTheme={(t) => setTheme(t as Theme)}>
       <div className="demo">
         <AppShell />
       </div>

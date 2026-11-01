@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { Link } from 'react-router'
 import { Avatar } from '../../../components/Avatar'
 import { Icon } from '../../../components/Icon'
@@ -7,6 +6,7 @@ import { supabase } from '../../../lib/supabase'
 import { useHouse } from '../../house/house'
 import { Section } from '../parts'
 import { useAppUI } from '../ui'
+import { THEMES } from '../../../app/theme'
 
 function Toggle({ label, sub, on, onChange }: { label: string; sub?: string; on: boolean; onChange: (v: boolean) => void }) {
   return (
@@ -25,8 +25,8 @@ export function ProfileScreen() {
   const ui = useAppUI()
   const toast = useToast()
   const me = house.me
-  // Notification settings are saved with email reminders in Phase 7
-  const [notify, setNotify] = useState({ all: true, bills: true, chores: true })
+  const settings = house.settings
+  const save = house.actions.saveSettings
 
   return (
     <div className="scr">
@@ -87,11 +87,32 @@ export function ProfileScreen() {
         </Link>
       </Section>
 
+      <Section title="Appearance">
+        <div className="chips" role="radiogroup" aria-label="Colour theme">
+          {THEMES.map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              role="radio"
+              aria-checked={settings.theme === key}
+              className={`ch ${settings.theme === key ? 'on' : ''}`}
+              onClick={() => save({ theme: key })}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </Section>
+
       <Section title="Settings">
         <div className="card sgrp">
-          <Toggle label="Notifications" on={notify.all} onChange={(all) => setNotify({ ...notify, all })} />
-          <Toggle label="Bill reminders" sub="2 days before a bill is due" on={notify.bills} onChange={(bills) => setNotify({ ...notify, bills })} />
-          <Toggle label="Chore reminders" sub="The morning a chore is due" on={notify.chores} onChange={(chores) => setNotify({ ...notify, chores })} />
+          <Toggle label="Notifications" sub="Reminder emails start soon" on={settings.notifyEnabled} onChange={(v) => save({ notifyEnabled: v })} />
+          {settings.notifyEnabled && (
+            <>
+              <Toggle label="Bill reminders" sub="2 days before a bill is due" on={settings.notifyBills} onChange={(v) => save({ notifyBills: v })} />
+              <Toggle label="Chore reminders" sub="The morning a chore is due" on={settings.notifyChores} onChange={(v) => save({ notifyChores: v })} />
+            </>
+          )}
           <div className="srow" style={{ cursor: 'default' }}>
             <div>
               <b>Currency</b>

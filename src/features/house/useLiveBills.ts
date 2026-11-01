@@ -4,9 +4,10 @@ import { friendlyHouseholdError } from '../../lib/householdErrors'
 import { addDays, yearMonth, type ISODate } from '../../lib/dates'
 import type { Bill } from '../../lib/bills'
 import type { HouseActions, NewBill } from './house'
+import { ReceiptError, uploadReceipt } from '../../lib/receipts'
 
-// Until Realtime (Phase 6), bills re-load this often while the app is on screen, and whenever it comes back.
-const POLL_MS = 30_000
+// Live updates arrive through Realtime; this slower re-load is a backup (and runs when the app comes back).
+const POLL_MS = 60_000
 
 type BillActions = Pick<
   HouseActions,
@@ -39,8 +40,9 @@ function toBill(r: Row): Bill {
     createdBy: r.created_by ?? '',
     recurrence: r.recurrence === 'monthly' ? 'monthly' : 'none',
     splitMode: r.split_mode === 'custom' ? 'custom' : 'equal',
-    shares: Object.fromEntries(r.bill_shares.map((s) => [s.user_id, { amountCents: s.amount_cents, paidAt: s.paid_at }])),
-    receiptName: r.bill_shares.find((s) => s.receipt_path)?.receipt_path ?? null,
+    shares: Object.fromEntries(
+      r.bill_shares.map((s) => [s.user_id, { amountCents: s.amount_cents, paidAt: s.paid_at, receiptPath: s.receipt_path }]),
+    ),
   }
 }
 
@@ -117,9 +119,28 @@ export function useLiveBills(householdId: string | null, meId: string | undefine
       )
 
     return {
-      markPaid: (billId) => {
-        if (!meId) return
-        void run(() => supabase.rpc('set_share_paid', { p_bill: billId, p_user: meId, p_paid: true }), setPaid(billId, meId, true), `${name(billId)} marked as paid`)
+      markPaid: (billId, receipt) => {
+        if (!meId || !householdId) return
+        void (async () => {
+          // Upload the receipt first, so a failed upload doesn't leave a half-done payment
+          let path: string | null = null
+          if (receipt) {
+            try {
+              path = await uploadReceipt(householdId, billId, meId, receipt)
+            } catch (e) {
+              toast(e instanceof ReceiptError ? e.message : 'The receipt didn’t upload. Please try again.')
+              return
+            }
+          }
+          const error = await run(
+            () => supabase.rpc('set_share_paid', { p_bill: billId, p_user: meId, p_paid: true }),
+            setPaid(billId, meId, true),
+            path ? undefined : `${name(billId)} marked as paid`,
+          )
+          if (!error && path) {
+            await run(() => supabase.rpc('attach_receipt', { p_bill: billId, p_path: path }), undefined, `${name(billId)} marked as paid, receipt attached`)
+          }
+        })()
       },
       undoPaid: (billId) => {
         if (!meId) return
@@ -171,5 +192,5 @@ export function useLiveBills(householdId: string | null, meId: string | undefine
 
   const visible = useMemo(() => (bills ? bills.filter((b) => isCurrent(b, today)) : null), [bills, today])
 
-  return { bills: visible, actions }
+  return { bills: visible, actions, reload }
 }

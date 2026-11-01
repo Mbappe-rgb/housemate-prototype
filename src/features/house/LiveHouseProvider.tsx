@@ -1,19 +1,20 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { HouseContext, type House, type HouseActions, type JoinRequest } from './house'
+import { HouseContext, type House, type HouseActions, type JoinRequest, type Settings } from './house'
 import { useAuth } from '../../app/auth'
 import { supabase } from '../../lib/supabase'
 import { todayIn } from '../../lib/dates'
 import { friendlyHouseholdError } from '../../lib/householdErrors'
 import type { Member } from '../../lib/bills'
 import { useToast } from '../../components/Toast'
-import { LoadingScreen } from '../../components/LoadingScreen'
+import { AppSkeleton } from '../../components/Skeleton'
 import { useLiveBills } from './useLiveBills'
 import { useLiveChores } from './useLiveChores'
+import { useLiveChannel } from '../../lib/useLiveChannel'
 
 type HouseholdRow = { id: string; name: string; timezone: string; currency: string }
 
-// Until Realtime arrives (Phase 6), the admin's dashboard re-checks for join requests this often.
-const REQUEST_POLL_MS = 20_000
+// Join requests arrive through Realtime; this slower re-check is a backup.
+const REQUEST_POLL_MS = 60_000
 
 /**
  * The signed-in person's real household, housemates, invite link and (for the admin) join requests.
@@ -31,6 +32,8 @@ export function LiveHouseProvider({ children }: { children: ReactNode }) {
   const [inviteCode, setInviteCode] = useState<string | null>(null)
   const [joinRequests, setJoinRequests] = useState<JoinRequest[]>([])
   const [error, setError] = useState<string | null>(null)
+  // Settings change on screen right away; the saved profile catches up
+  const [settingsDraft, setSettingsDraft] = useState<Partial<Settings>>({})
   const today = todayIn(household?.timezone ?? 'America/Toronto')
   const live = useLiveBills(householdId, userId, today, toast)
   const liveChores = useLiveChores(householdId, today, toast)
@@ -111,8 +114,34 @@ export function LiveHouseProvider({ children }: { children: ReactNode }) {
     }
   }, [householdId, isAdmin, loadRequests])
 
+  // Live updates: re-read only what changed
+  useLiveChannel(householdId ? `household:${householdId}` : null, (tables) => {
+    if (!householdId) return
+    if (tables.has('bills') || tables.has('bill_shares')) void live.reload()
+    if (tables.has('chores')) void liveChores.reload()
+    if (tables.has('household_members') || tables.has('households') || tables.has('invites')) void load(householdId)
+    if (tables.has('join_requests') && isAdmin) void loadRequests(householdId)
+  })
+  // Removed from the household, or made admin: refresh who I am
+  useLiveChannel(userId ? `user:${userId}` : null, (tables) => {
+    if (tables.has('household_members')) void refreshAuth()
+  })
+
   const actions = useMemo<HouseActions>(() => {
     return {
+      saveSettings: async (change) => {
+        if (!userId) return
+        setSettingsDraft((d) => ({ ...d, ...change }))
+        const update: { theme?: string; notify_enabled?: boolean; notify_bills?: boolean; notify_chores?: boolean } = {}
+        if (change.theme !== undefined) update.theme = change.theme
+        if (change.notifyEnabled !== undefined) update.notify_enabled = change.notifyEnabled
+        if (change.notifyBills !== undefined) update.notify_bills = change.notifyBills
+        if (change.notifyChores !== undefined) update.notify_chores = change.notifyChores
+        const { error } = await supabase.from('profiles').update(update).eq('id', userId)
+        if (error) toast('We couldn’t save that setting. Please try again.')
+        await refreshAuth()
+        setSettingsDraft({})
+      },
       ...live.actions,
       ...liveChores.actions,
       saveProfile: async (edit) => {
@@ -177,7 +206,7 @@ export function LiveHouseProvider({ children }: { children: ReactNode }) {
       </div>
     )
   }
-  if (!household || !members || !userId || !live.bills || !liveChores.chores) return <LoadingScreen />
+  if (!household || !members || !userId || !live.bills || !liveChores.chores) return <AppSkeleton />
 
   const me = members.find((m) => m.id === userId) ?? {
     id: userId,
@@ -194,6 +223,13 @@ export function LiveHouseProvider({ children }: { children: ReactNode }) {
     bills: live.bills,
     chores: liveChores.chores,
     inviteCode,
+    settings: {
+      theme: auth.profile?.theme ?? 'lime',
+      notifyEnabled: auth.profile?.notify_enabled ?? true,
+      notifyBills: auth.profile?.notify_bills ?? true,
+      notifyChores: auth.profile?.notify_chores ?? true,
+      ...settingsDraft,
+    },
     isAdmin,
     joinRequests: isAdmin ? joinRequests : [],
     moneyReady: true,

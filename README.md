@@ -69,6 +69,12 @@ signup hook). Run `npx supabase config diff` to compare them with the linked pro
 log in, and ask to join; the admin approves them from the dashboard. Rules are in `docs/decisions.md`.
 To test the join flow you need two allowlisted accounts, ideally on two phones.
 
+**Live updates and receipts:** changes reach housemates' phones through private Realtime channels
+(`household:<id>`), and receipts are stored in the private `receipts` bucket. A nightly job (pg_cron) adds next
+month's copy of monthly bills. Details in `docs/decisions.md`.
+
+**Install on a phone:** open the site, then Share → Add to Home Screen (iPhone) or ⋮ → Install app (Android).
+
 **Password resets:** Supabase's built-in email only reaches your Supabase team until we set up
 custom email (Phase 7). Until then, reset a tester's password from the dashboard
 (Authentication > Users).

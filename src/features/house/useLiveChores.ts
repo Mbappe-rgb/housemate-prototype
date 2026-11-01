@@ -5,8 +5,8 @@ import { addDays, type ISODate } from '../../lib/dates'
 import type { Chore } from '../../lib/bills'
 import type { HouseActions, NewChore } from './house'
 
-// Until Realtime (Phase 6), chores re-load this often while the app is on screen, and whenever it comes back.
-const POLL_MS = 30_000
+// Live updates arrive through Realtime; this slower re-load is a backup (and runs when the app comes back).
+const POLL_MS = 60_000
 
 type ChoreActions = Pick<HouseActions, 'addChore' | 'completeChore' | 'reopenChore' | 'deleteChore'>
 
@@ -104,5 +104,5 @@ export function useLiveChores(householdId: string | null, today: ISODate, toast:
     }
   }, [householdId, reload, toast])
 
-  return { chores, actions }
+  return { chores, actions, reload }
 }

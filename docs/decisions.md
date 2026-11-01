@@ -2,6 +2,18 @@
 
 Short record of product and technical decisions, newest first. Each one says what we chose and why.
 
+## 2026-10-31: Live updates, receipts and the installable app (Phase 6)
+
+- **Live updates use private broadcast channels**, not "postgres changes". The database sends a tiny
+  "this table changed" message to `household:<id>` (and `user:<id>` for join decisions); the app then re-reads
+  through normal RLS-protected queries. Only members can listen, so no data from other households ever reaches
+  a phone. The app still re-checks every 60 seconds and when it comes back on screen, as a backup.
+- **Receipts** live in a private `receipts` bucket (5 MB, photos and PDFs). Photos are shrunk on the phone first.
+  Housemates can view them through 60-second links. Deleting or un-paying a bill doesn't remove the file yet.
+- **Monthly bills** are created by a nightly database job (06:15 UTC), as well as when the app opens.
+- **Installable app without the vite-plugin-pwa package:** a hand-written manifest, icons and a service worker
+  that caches nothing (stale balances offline would be worse than a spinner). Avoids a new dependency.
+
 ## 2026-10-24: Joining a household needs the admin's approval
 
 **Decision**
@@ -24,8 +36,7 @@ join is approved, a link no longer needs a tight use limit (it allows 50 request
 **Later**
 
 - Email notifications for new requests and decisions arrive with custom email in Phase 7 (needs a domain).
-  Until then the admin's dashboard checks for requests every 20 seconds, and someone waiting for approval
-  is moved into the household within about 10 seconds of approval. Realtime (Phase 6) will make both instant.
+  Since Phase 6, requests and approvals show up instantly through Realtime.
 - The Email tab on the invite screen opens the person's own email app with the link filled in.
 
 ## 2026-10-24: Phase 1 ports the prototype as-is

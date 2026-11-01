@@ -4,6 +4,7 @@ import { Icon } from '../../../components/Icon'
 import { Dialog, Sheet } from '../../../components/Sheet'
 import { useToast } from '../../../components/Toast'
 import { copyText } from '../../../lib/clipboard'
+import { openReceipt } from '../../../lib/receipts'
 import { isSplitLocked, isTodo, othersCount, othersPaid, shareOf, type Bill } from '../../../lib/bills'
 import { daysBetween, dueText, shortDate } from '../../../lib/dates'
 import { centsToInput, formatMoney, splitEqual } from '../../../lib/money'
@@ -43,6 +44,24 @@ export function BillSheet({ billId, onClose }: { billId: string; onClose: () => 
   )
 }
 
+/** "Receipt" button that opens the file through a short-lived private link. */
+function ReceiptLink({ path, who }: { path: string; who: string }) {
+  const toast = useToast()
+  return (
+    <button
+      type="button"
+      className="tg"
+      aria-label={`Open ${who === 'You' ? 'your' : `${who}’s`} receipt`}
+      onClick={async () => {
+        if (path.startsWith('demo:')) return toast('In the demo, receipts aren’t stored')
+        if (!(await openReceipt(path))) toast('Couldn’t open the receipt. Please try again.')
+      }}
+    >
+      📎 Receipt
+    </button>
+  )
+}
+
 function BackTop({ title, subtitle, back }: { title: string; subtitle: string; back: () => void }) {
   return (
     <div className="top">
@@ -76,7 +95,8 @@ function Detail({
   const payer = memberById(house, bill.payerId)
   const payerName = payer?.name ?? 'a former housemate'
   const myShare = shareOf(bill, me)
-  const [receipt, setReceipt] = useState<string | null>(null)
+  const [receipt, setReceipt] = useState<File | null>(null)
+  const toast = useToast()
   const equalEach = splitEqual(bill.totalCents, Object.keys(bill.shares).length)
 
   return (
@@ -185,6 +205,7 @@ function Detail({
               <span>
                 {nameFor(house, m.id)} <small>{formatMoney(s.amountCents)}</small>
               </span>
+              {s.receiptPath && <ReceiptLink path={s.receiptPath} who={nameFor(house, m.id)} />}
               {tag}
             </div>
           )
@@ -192,23 +213,25 @@ function Detail({
 
       {todo ? (
         <>
-          {house.mode === 'demo' && (
           <label className={`up ${receipt ? 'on' : ''}`} style={{ marginTop: 14 }}>
             <input
               type="file"
-              accept="image/*,.pdf"
+              accept="image/*,application/pdf"
               hidden
-              onChange={(e) => setReceipt(e.target.files?.[0]?.name ?? null)}
+              onChange={(e) => {
+                const file = e.target.files?.[0] ?? null
+                if (file && file.size > 20 * 1024 * 1024) return toast('That file is too big. Try a photo or a PDF under 5 MB.')
+                setReceipt(file)
+              }}
             />
             <span className="em" aria-hidden="true">
               {receipt ? <Icon name="check" size={20} /> : '📎'}
             </span>
             <span>
-              {receipt ?? (iPay ? 'Attach the receipt from the provider' : 'Attach payment receipt')}
+              {receipt?.name ?? (iPay ? 'Attach the receipt from the provider' : 'Attach payment receipt')}
               <small>{receipt ? 'Tap to replace' : 'Optional, a photo or PDF works'}</small>
             </span>
           </label>
-          )}
           <button
             type="button"
             className="btn"

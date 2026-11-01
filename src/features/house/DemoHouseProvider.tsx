@@ -15,7 +15,17 @@ const SAMPLE_REQUESTS: JoinRequest[] = [
 ]
 
 /** The prototype's sample household. Everything happens in memory and resets on reload. */
-export function DemoHouseProvider({ state, children }: { state: DemoState; children: ReactNode }) {
+export function DemoHouseProvider({
+  state,
+  theme,
+  onTheme,
+  children,
+}: {
+  state: DemoState
+  theme: string
+  onTheme: (theme: string) => void
+  children: ReactNode
+}) {
   const today = todayIn(TIMEZONE)
   const toast = useToast()
   const [loadedState, setLoadedState] = useState(state)
@@ -24,6 +34,7 @@ export function DemoHouseProvider({ state, children }: { state: DemoState; child
   const [members, setMembers] = useState(DEMO_MEMBERS)
   const [inviteCode, setInviteCode] = useState('WEBR7K4QM2XP')
   const [joinRequests, setJoinRequests] = useState(SAMPLE_REQUESTS)
+  const [notify, setNotify] = useState({ notifyEnabled: true, notifyBills: true, notifyChores: true })
   const me = members[0]
 
   // Reload the sample data when the data state changes in the demo controls
@@ -40,11 +51,15 @@ export function DemoHouseProvider({ state, children }: { state: DemoState; child
       shares: { ...b.shares, [memberId]: { ...b.shares[memberId], paidAt } },
     })
     return {
-      markPaid: (id, receiptName) => {
-        updateBill(id, (b) => ({ ...setPaid(b, me.id, new Date().toISOString()), receiptName: receiptName ?? null }))
+      markPaid: (id, receipt) => {
+        updateBill(id, (b) => {
+          const paid = setPaid(b, me.id, new Date().toISOString())
+          // The demo keeps only the file name; nothing is uploaded
+          return receipt ? { ...paid, shares: { ...paid.shares, [me.id]: { ...paid.shares[me.id], receiptPath: `demo:${receipt.name}` } } } : paid
+        })
         toast(`${bills.find((b) => b.id === id)?.name ?? 'Bill'} marked as paid`)
       },
-      undoPaid: (id) => updateBill(id, (b) => ({ ...setPaid(b, me.id, null), receiptName: null })),
+      undoPaid: (id) => updateBill(id, (b) => setPaid(b, me.id, null)),
       markReceived: (id, memberId) => updateBill(id, (b) => setPaid(b, memberId, new Date().toISOString())),
       addBill: (n: NewBill) => {
         const equal = splitEqual(n.totalCents, members.length)
@@ -125,6 +140,10 @@ export function DemoHouseProvider({ state, children }: { state: DemoState; child
         toast('Profile saved')
         return null
       },
+      saveSettings: (change) => {
+        if (change.theme) onTheme(change.theme)
+        setNotify((n) => ({ ...n, ...Object.fromEntries(Object.entries(change).filter(([k]) => k !== 'theme')) }))
+      },
       leaveHousehold: async () => {
         toast('In the demo you can’t really leave')
         return null
@@ -150,7 +169,7 @@ export function DemoHouseProvider({ state, children }: { state: DemoState; child
         }
       },
     }
-  }, [bills, chores, members, me, toast, joinRequests])
+  }, [bills, chores, members, me, toast, joinRequests, onTheme])
 
   const house: House = {
     mode: 'demo',
@@ -161,6 +180,7 @@ export function DemoHouseProvider({ state, children }: { state: DemoState; child
     bills,
     chores,
     inviteCode,
+    settings: { theme, ...notify },
     isAdmin: true,
     joinRequests,
     moneyReady: true,

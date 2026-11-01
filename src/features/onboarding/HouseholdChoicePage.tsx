@@ -6,13 +6,14 @@ import { useToast } from '../../components/Toast'
 import { useAuth } from '../../app/auth'
 import { supabase } from '../../lib/supabase'
 import { friendlyHouseholdError } from '../../lib/householdErrors'
+import { useLiveChannel } from '../../lib/useLiveChannel'
 import { AuthLayout, Hero } from '../auth/AuthLayout'
 import { LogOutButton } from '../auth/LogOutButton'
 
 type MyRequest = { id: string; status: 'pending' | 'declined'; household_name: string } | null
 
-// While someone waits for approval we check every 10s (Realtime replaces this in Phase 6)
-const WAIT_POLL_MS = 10_000
+// Approval arrives through Realtime; this re-check is a backup
+const WAIT_POLL_MS = 30_000
 
 export function BigOption({ emoji, title, text, to }: { emoji: string; title: string; text: string; to: string }) {
   return (
@@ -46,6 +47,9 @@ export function HouseholdChoicePage() {
     lastStatus.current = next?.status
     setRequest(next)
   }, [refreshAuth])
+
+  // The admin's decision arrives on my own channel
+  useLiveChannel(auth.session ? `user:${auth.session.user.id}` : null, () => void check())
 
   useEffect(() => {
     // check() sets state only after the network call returns
