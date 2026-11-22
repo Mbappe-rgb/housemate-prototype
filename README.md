@@ -34,7 +34,7 @@ Only the project URL and the publishable (anon) key go here. Never use the secre
 | `npm run build` | Type-check and build to `dist/` |
 | `npm run preview` | Serve the built app locally |
 | `npm run lint` | Lint with oxlint |
-| `npm test` | Unit tests for money, dates and invite codes (Vitest) |
+| `npm test` | Unit tests for money, dates, bills, reports and invite codes (Vitest) |
 | `npm run db:push` | Apply new migrations to the linked Supabase project |
 | `npm run db:types` | Regenerate `src/types/database.ts` after a schema change |
 | `npm run db:seed` | Load fake data into the **dev** project (never prod) |
@@ -73,6 +73,9 @@ To test the join flow you need two allowlisted accounts, ideally on two phones.
 (`household:<id>`), and receipts are stored in the private `receipts` bucket. A nightly job (pg_cron) adds next
 month's copy of monthly bills. Details in `docs/decisions.md`.
 
+**Payments and reminders:** housemates mark their share **Sent**; the person who paid the bill confirms it as
+**Paid**. Reminders show in the app (emails come in Phase 7). Details in `docs/decisions.md`.
+
 **Install on a phone:** open the site, then Share → Add to Home Screen (iPhone) or ⋮ → Install app (Android).
 
 **Password resets:** Supabase's built-in email only reaches your Supabase team until we set up
@@ -83,7 +86,7 @@ custom email (Phase 7). Until then, reset a tester's password from the dashboard
 
 ```
 prototype/            original prototype, kept as the design reference
-docs/                 implementation plan and decisions
+docs/                 implementation plan, decisions, and the v5 design files (docs/design)
 src/
   app/                router, providers, app shell, route guards
   components/         shared UI pieces (Button, Sheet, Avatar...)

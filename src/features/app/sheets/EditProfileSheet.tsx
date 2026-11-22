@@ -1,38 +1,57 @@
 import { useState } from 'react'
+import { Avatar } from '../../../components/Avatar'
+import { Icon } from '../../../components/Icon'
 import { Sheet } from '../../../components/Sheet'
 import { useHouse } from '../../house/house'
 
+const EMAIL = /^\S+@\S+\.\S+$/
+const PHONE = /^[+\d][\d\s().-]{6,}$/
+
+/** Edit profile (v5): Name, Display name, and one Interac e-Transfer detail. Photos come later. */
 export function EditProfileSheet({ onClose }: { onClose: () => void }) {
   const house = useHouse()
   const me = house.me
+  const [fullName, setFullName] = useState(me.fullName ?? '')
   const [displayName, setDisplayName] = useState(me.name)
-  const [etransferEmail, setEtransferEmail] = useState(me.etransferEmail ?? '')
-  const [phone, setPhone] = useState(me.phone ?? '')
-  const [bankName, setBankName] = useState(me.bankName ?? '')
+  const [etransfer, setEtransfer] = useState(me.etransfer ?? '')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const emailOk = !etransferEmail.trim() || /^\S+@\S+\.\S+$/.test(etransferEmail.trim())
-  const valid = displayName.trim().length > 0 && emailOk
+  const et = etransfer.trim()
+  const etOk = !et || EMAIL.test(et) || PHONE.test(et)
+  const valid = displayName.trim().length > 0 && etOk
 
   return (
     <Sheet label="Edit profile" onClose={onClose}>
-      <div className="top">
-        <div>
-          <b className="lg">Edit profile</b>
-          <small>Housemates see these when they pay you</small>
+      <div className="top hth">
+        <button type="button" className="ib" onClick={onClose} aria-label="Back">
+          <Icon name="left" size={20} />
+        </button>
+        <div className="htt">
+          <b>Edit profile</b>
         </div>
+        <span className="hsp" />
       </div>
-      <h4>Your name</h4>
-      <input className="fld" aria-label="Your name" autoComplete="name" maxLength={40} value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
-      <h4>E-transfer email</h4>
-      <input className="fld" type="email" inputMode="email" aria-label="E-transfer email" placeholder="Optional" maxLength={254} value={etransferEmail} onChange={(e) => setEtransferEmail(e.target.value)} />
-      {!emailOk && <small className="err">Check that email address.</small>}
-      <h4>Phone</h4>
-      <input className="fld" type="tel" aria-label="Phone" placeholder="Optional" maxLength={30} value={phone} onChange={(e) => setPhone(e.target.value)} />
-      <h4>Bank</h4>
-      <input className="fld" aria-label="Bank" placeholder="Optional" maxLength={60} value={bankName} onChange={(e) => setBankName(e.target.value)} />
-      <small className="hint">Payment details are optional and only shown to your housemates.</small>
+      <div className="pph">
+        <Avatar name={displayName || me.name} hue={me.hue} size={96} />
+      </div>
+      <label className="pfl">
+        <small>Name</small>
+        <input type="text" autoComplete="name" maxLength={80} value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Your full name (optional)" />
+      </label>
+      <label className="pfl">
+        <small>Display name</small>
+        <input type="text" autoComplete="given-name" maxLength={40} value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
+      </label>
+      <label className="pfl">
+        <small>Interac e-Transfer details</small>
+        <input type="text" inputMode="email" autoComplete="email" maxLength={254} value={etransfer} onChange={(e) => setEtransfer(e.target.value)} placeholder="Email or phone number" />
+      </label>
+      <small className="hint" style={{ margin: '2px 4px 0' }}>
+        An email or phone number. Housemates see this when they pay you.
+      </small>
+      {!etOk && <small className="err">Enter an email address or a phone number.</small>}
+      {!displayName.trim() && <small className="err">Add a display name.</small>}
       {error && (
         <small className="err" role="alert">
           {error}
@@ -45,16 +64,13 @@ export function EditProfileSheet({ onClose }: { onClose: () => void }) {
         disabled={!valid || busy}
         onClick={async () => {
           setBusy(true)
-          const err = await house.actions.saveProfile({ displayName, etransferEmail, phone, bankName })
+          const err = await house.actions.saveProfile({ fullName, displayName, etransfer })
           setBusy(false)
           if (err) setError(err)
           else onClose()
         }}
       >
         {busy ? 'Saving…' : 'Save'}
-      </button>
-      <button type="button" className="lk" onClick={onClose}>
-        Cancel
       </button>
     </Sheet>
   )

@@ -9,6 +9,8 @@ import { SignUpPage } from '../features/auth/SignUpPage'
 import { LogInPage } from '../features/auth/LogInPage'
 import { ForgotPasswordPage } from '../features/auth/ForgotPasswordPage'
 import { ResetPasswordPage } from '../features/auth/ResetPasswordPage'
+import { PrivacyPage } from '../features/auth/PrivacyPage'
+import { PayDetailsPage } from '../features/onboarding/PayDetailsPage'
 import { NamePage } from '../features/onboarding/NamePage'
 import { HouseholdChoicePage } from '../features/onboarding/HouseholdChoicePage'
 import { CreateHouseholdPage } from '../features/onboarding/CreateHouseholdPage'
@@ -18,9 +20,7 @@ import { LiveHouseProvider } from '../features/house/LiveHouseProvider'
 import { useHouse } from '../features/house/house'
 import { AppShell } from '../features/app/AppShell'
 import { HomeScreen } from '../features/app/screens/HomeScreen'
-import { BillsScreen } from '../features/app/screens/BillsScreen'
-import { CalendarScreen } from '../features/app/screens/CalendarScreen'
-import { ChoresScreen } from '../features/app/screens/ChoresScreen'
+import { ScheduleScreen } from '../features/app/screens/ScheduleScreen'
 import { ProfileScreen } from '../features/app/screens/ProfileScreen'
 import { HouseholdScreen } from '../features/app/screens/HouseholdScreen'
 import { DemoApp } from '../features/demo/DemoApp'
@@ -30,11 +30,14 @@ function appScreens() {
   return (
     <>
       <Route index element={<HomeScreen />} />
-      <Route path="bills" element={<BillsScreen />} />
-      <Route path="calendar" element={<CalendarScreen />} />
-      <Route path="chores" element={<ChoresScreen />} />
+      <Route path="schedule" element={<ScheduleScreen />} />
+      <Route path="household" element={<HouseholdScreen />} />
       <Route path="profile" element={<ProfileScreen />} />
-      <Route path="profile/household" element={<HouseholdScreen />} />
+      {/* addresses from before the v5 redesign */}
+      <Route path="bills" element={<Navigate to="../schedule?range=month&type=bills" replace />} />
+      <Route path="calendar" element={<Navigate to="../schedule?range=month" replace />} />
+      <Route path="chores" element={<Navigate to="../schedule?range=week&type=chores" replace />} />
+      <Route path="profile/household" element={<Navigate to="../household" replace />} />
     </>
   )
 }
@@ -64,6 +67,7 @@ export default function App() {
             {/* Logged out */}
             <Route element={<Gate stage="/welcome" />}>
               <Route path="/welcome" element={<WelcomePage />} />
+              <Route path="/privacy" element={<PrivacyPage />} />
               <Route path="/signup" element={<SignUpPage />} />
               <Route path="/login" element={<LogInPage />} />
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
@@ -78,6 +82,7 @@ export default function App() {
             </Route>
             <Route element={<Gate stage="/setup/household" />}>
               <Route path="/setup/household" element={<HouseholdChoicePage />} />
+              <Route path="/setup/pay" element={<PayDetailsPage />} />
               <Route path="/setup/create" element={<CreateHouseholdPage />} />
               <Route path="/setup/join" element={<JoinCodePage />} />
             </Route>

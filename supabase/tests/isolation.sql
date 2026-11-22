@@ -666,9 +666,10 @@ begin
 
     -- Completing a weekly chore creates next week's
     r := pg_temp.try('select public.complete_chore(' || recycling || ')::text');
-    r := r || ' / ' || pg_temp.try('select (n.due_date - o.due_date)::text || '' days later, '' || n.recurrence from public.chores n join public.chores o on o.id = n.previous_id where n.previous_id = ' || recycling);
+    -- next week's, or today if the old one is so overdue that would be in the past
+    r := r || ' / ' || pg_temp.try('select (n.due_date = greatest(o.due_date + 7, (now() at time zone ''America/Toronto'')::date))::text || '', '' || n.recurrence from public.chores n join public.chores o on o.id = n.previous_id where n.previous_id = ' || recycling);
     names := array_append(names, 'Ticking a weekly chore adds next week''s'::text);
-    oks := oks || (r = 'ok: / ok:7 days later, weekly');
+    oks := oks || (r = 'ok: / ok:true, weekly');
     details := details || r;
 
     r := pg_temp.try('select public.complete_chore(' || recycling || ')::text');
@@ -835,6 +836,125 @@ begin
   exception when others then
     if sqlerrm <> 'ROLLBACK_ME' then
       names := array_append(names, 'Phase 6 checks ran to the end'::text);
+      oks := oks || false;
+      details := details || sqlerrm;
+    end if;
+  end;
+
+  for i in 1..coalesce(array_length(names, 1), 0) loop
+    insert into results (check_name, ok, detail) values (names[i], oks[i], details[i]);
+  end loop;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- v5: Sent then Confirm, reminders, profile fields, themes. All rolled back.
+-- Maple House: Hydro = Ben pays, $100.01 split Ada 5001 / Ben 5000, nothing paid.
+-- ---------------------------------------------------------------------------
+do $$
+declare
+  ada   constant uuid := '11111111-1111-4111-8111-111111111111';
+  ben   constant uuid := '22222222-2222-4222-8222-222222222222';
+  cleo  constant uuid := '33333333-3333-4333-8333-333333333333';
+  hydro constant text := '''aaaaaaaa-0000-4000-8000-0000000000b2''';
+  a text := 'authenticated';
+  names text[] := '{}';
+  oks boolean[] := '{}';
+  details text[] := '{}';
+  r text;
+  i int;
+begin
+  begin
+    -- Ada (housemate) marks her Hydro share as sent
+    perform pg_temp.become(a, ada);
+    r := pg_temp.try('select public.mark_share_sent(' || hydro || ', true)::text');
+    r := r || ' / ' || pg_temp.try('select (sent_at is not null)::text || '','' || (paid_at is null)::text from public.bill_shares where bill_id = ' || hydro || ' and user_id = auth.uid()');
+    names := array_append(names, 'A housemate can mark their share as sent'::text);
+    oks := oks || (r = 'ok: / ok:true,true');
+    details := details || r;
+    perform pg_temp.unbecome();
+
+    perform pg_temp.become(a, ben);
+    r := pg_temp.try('select public.mark_share_sent(' || hydro || ', true)::text');
+    names := array_append(names, 'The payer can''t mark their own share as sent'::text);
+    oks := oks || (r like 'err:payer_pays_provider%');
+    details := details || r;
+
+    r := pg_temp.try('select public.update_bill_split(' || hydro || ', ''equal'')::text');
+    names := array_append(names, 'Split is locked once a housemate has sent'::text);
+    oks := oks || (r like 'err:split_locked%');
+    details := details || r;
+
+    r := pg_temp.try('select public.delete_bill(' || hydro || ')::text');
+    names := array_append(names, 'A bill with a sent payment can''t be deleted'::text);
+    oks := oks || (r like 'err:bill_has_payments%');
+    details := details || r;
+
+    -- Ben (payer) confirms Ada's payment
+    r := pg_temp.try('select public.set_share_paid(' || hydro || ', ' || quote_literal(ada::text) || ', true)::text');
+    r := r || ' / ' || pg_temp.try('select (paid_at is not null)::text from public.bill_shares where bill_id = ' || hydro || ' and user_id = ' || quote_literal(ada::text));
+    names := array_append(names, 'The payer confirms a sent payment'::text);
+    oks := oks || (r = 'ok: / ok:true');
+    details := details || r;
+    perform pg_temp.unbecome();
+
+    perform pg_temp.become(a, ada);
+    r := pg_temp.try('select public.mark_share_sent(' || hydro || ', false)::text');
+    names := array_append(names, 'A confirmed payment can''t be un-sent by the housemate'::text);
+    oks := oks || (r like 'err:already_confirmed%');
+    details := details || r;
+    perform pg_temp.unbecome();
+
+    perform pg_temp.become(a, ben);
+    r := pg_temp.try('select public.set_share_paid(' || hydro || ', ' || quote_literal(ada::text) || ', false)::text');
+    r := r || ' / ' || pg_temp.try('select (sent_at is null and paid_at is null)::text from public.bill_shares where bill_id = ' || hydro || ' and user_id = ' || quote_literal(ada::text));
+    names := array_append(names, 'Mark as unpaid clears sent and paid'::text);
+    oks := oks || (r = 'ok: / ok:true');
+    details := details || r;
+
+    -- Reminders
+    r := pg_temp.try('select public.send_bill_reminder(' || hydro || ')::text');
+    r := r || ' then ' || pg_temp.try('select public.send_bill_reminder(' || hydro || ')::text');
+    names := array_append(names, 'Payer reminds unpaid housemates, once a day'::text);
+    oks := oks || (r = 'ok:1 then ok:0');
+    details := details || r;
+    perform pg_temp.unbecome();
+
+    perform pg_temp.become(a, ada);
+    r := pg_temp.try('select count(*)::text from public.notifications where user_id = auth.uid()');
+    r := r || ' / ' || pg_temp.try('select public.send_bill_reminder(' || hydro || ')::text');
+    names := array_append(names, 'Housemate sees the reminder; only the payer can send them'::text);
+    oks := oks || (r like 'ok:1 / err:not_payer%');
+    details := details || r;
+
+    r := pg_temp.try('select public.mark_notifications_read()::text');
+    r := r || ' / ' || pg_temp.try('select count(*)::text from public.notifications where user_id = auth.uid() and read_at is null');
+    names := array_append(names, 'Reminders can be marked as read'::text);
+    oks := oks || (r in ('ok: / ok:0', 'ok:null / ok:0'));
+    details := details || r;
+    perform pg_temp.unbecome();
+
+    perform pg_temp.become(a, cleo);
+    r := pg_temp.try('select count(*)::text from public.notifications');
+    r := r || ' / ' || pg_temp.try('select public.mark_share_sent(' || hydro || ', true)::text');
+    perform pg_temp.unbecome();
+    names := array_append(names, 'Other households can''t see reminders or mark sent'::text);
+    oks := oks || (r like 'ok:0 / err:not_found%');
+    details := details || r;
+
+    -- Profile and themes
+    perform pg_temp.become(a, ben);
+    r := pg_temp.try('update public.profiles set full_name = ''Ben Okafor'', etransfer = ''(416) 555-0177'', theme = ''lilac'' where id = auth.uid() returning theme');
+    r := r || ' / ' || pg_temp.try('update public.profiles set theme = ''neon'' where id = auth.uid() returning theme');
+    r := r || ' / ' || pg_temp.try('update public.profiles set privacy_accepted_at = now() where id = auth.uid() returning id::text');
+    perform pg_temp.unbecome();
+    names := array_append(names, 'New profile fields and themes save; unknown themes and consent dates don''t'::text);
+    oks := oks || (r like 'ok:lilac / err:%profiles_theme_check% / err:permission denied%');
+    details := details || r;
+
+    raise exception 'ROLLBACK_ME';
+  exception when others then
+    if sqlerrm <> 'ROLLBACK_ME' then
+      names := array_append(names, 'v5 checks ran to the end'::text);
       oks := oks || false;
       details := details || sqlerrm;
     end if;

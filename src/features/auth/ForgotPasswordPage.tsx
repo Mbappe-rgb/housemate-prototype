@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { supabase } from '../../lib/supabase'
 import { friendlyAuthError } from '../../lib/authErrors'
 import { Field } from '../../components/Field'
-import { AuthLayout, BackBar, FormError } from './AuthLayout'
+import { AuthPage, FormError, Spacer } from './AuthLayout'
 
 export function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
@@ -24,27 +24,24 @@ export function ForgotPasswordPage() {
   }
 
   return (
-    <AuthLayout>
-      <BackBar to="/login" />
-      <h1>Reset your password</h1>
-      <p>Enter your email and we’ll send you a link to choose a new one.</p>
+    <AuthPage title="Reset your password" subtitle="We’ll email you a link to choose a new one." back="/login">
       <form onSubmit={onSubmit} noValidate style={{ display: 'contents' }}>
         <Field label="Email" placeholder="Email" type="email" inputMode="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
         <FormError message={error} />
         {sent && (
-          <div className="card lk2" style={{ marginTop: 14 }} role="status">
+          <div className="card2" style={{ marginTop: 14 }} role="status">
             <b>Check your inbox</b>
-            <small style={{ display: 'block', marginTop: 4 }}>
-              If {email.trim()} has an account, a reset link is on its way. While we’re testing, emails may not arrive. If
-              yours doesn’t, ask the HouseMate team to reset your password.
+            <small className="hint" style={{ marginTop: 4 }}>
+              If {email.trim()} has an account, a reset link is on its way. While we’re testing, emails may not arrive. If yours doesn’t, ask the
+              HouseMate team to reset your password.
             </small>
           </div>
         )}
-        <div className="grow" />
+        <Spacer />
         <button type="submit" className="btn" disabled={busy}>
           {busy ? 'Sending…' : sent ? 'Send again' : 'Send reset link'}
         </button>
       </form>
-    </AuthLayout>
+    </AuthPage>
   )
 }

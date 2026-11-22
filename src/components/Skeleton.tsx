@@ -1,22 +1,17 @@
-/** Grey placeholder shapes of the dashboard, shown while the household loads. */
+/** Placeholder shapes of the dashboard (hero and sheet), shown while the household loads. */
 export function AppSkeleton() {
   return (
-    <div className="scr" aria-busy="true" aria-label="Loading your household">
-      <div className="hd">
-        <span className="sk" style={{ width: 46, height: 46, borderRadius: '50%' }} />
-        <div>
-          <span className="sk" style={{ width: '60%', height: 16, marginBottom: 6 }} />
-          <span className="sk" style={{ width: '40%', height: 12 }} />
+    <div className="dash" aria-busy="true" aria-label="Loading your household">
+      <div className="hero2" />
+      <div className="sh2 white" style={{ paddingTop: 24 }}>
+        <div className="bal">
+          <span className="sk" style={{ height: 70, borderRadius: 20 }} />
+          <span className="sk" style={{ height: 70, borderRadius: 20 }} />
         </div>
+        <span className="sk" style={{ width: '30%', height: 16, margin: '8px 4px 14px' }} />
+        <span className="sk" style={{ height: 132, borderRadius: 16, marginBottom: 12 }} />
+        <span className="sk" style={{ height: 132, borderRadius: 16 }} />
       </div>
-      <span className="sk" style={{ height: 230, borderRadius: 26, marginBottom: 12 }} />
-      <div className="tiles">
-        <span className="sk" style={{ height: 84, borderRadius: 24 }} />
-        <span className="sk" style={{ height: 84, borderRadius: 24 }} />
-      </div>
-      <span className="sk" style={{ height: 78, borderRadius: 26, marginBottom: 12 }} />
-      <span className="sk" style={{ height: 76, borderRadius: 24, marginBottom: 10 }} />
-      <span className="sk" style={{ height: 76, borderRadius: 24 }} />
     </div>
   )
 }

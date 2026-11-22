@@ -2,11 +2,11 @@ import { Link } from 'react-router'
 import { Avatar } from '../../../components/Avatar'
 import { Icon } from '../../../components/Icon'
 import { useToast } from '../../../components/Toast'
+import { THEMES, normalizeTheme } from '../../../app/theme'
 import { supabase } from '../../../lib/supabase'
 import { useHouse } from '../../house/house'
-import { Section } from '../parts'
+import { Sec } from '../parts'
 import { useAppUI } from '../ui'
-import { THEMES } from '../../../app/theme'
 
 function Toggle({ label, sub, on, onChange }: { label: string; sub?: string; on: boolean; onChange: (v: boolean) => void }) {
   return (
@@ -20,118 +20,67 @@ function Toggle({ label, sub, on, onChange }: { label: string; sub?: string; on:
   )
 }
 
+/** Profile (v5): you, your household, settings, log out. */
 export function ProfileScreen() {
   const house = useHouse()
   const ui = useAppUI()
   const toast = useToast()
-  const me = house.me
-  const settings = house.settings
+  const { settings } = house
   const save = house.actions.saveSettings
+  const theme = normalizeTheme(settings.theme)
 
   return (
-    <div className="scr">
-      <header className="hd">
-        <div>
-          <h1 className="title" style={{ margin: 0 }}>
-            Profile
-          </h1>
-        </div>
-      </header>
+    <div className="pfv">
+      <h1 className="pft2">Profile</h1>
+      <button type="button" className="pcd" onClick={ui.openEditProfile} aria-label="Edit profile">
+        <Avatar name={house.me.name} hue={house.me.hue} size={64} />
+        <span className="pcn">
+          <b>{house.me.name}</b>
+          <small>{house.me.email ?? house.me.etransfer ?? 'Add your e-transfer details'}</small>
+        </span>
+        <Icon name="right" size={18} />
+      </button>
 
-      <div className="card pcard">
-        <div className="pcw">
-          <Avatar name={me.name} hue={me.hue} size={72} />
-          <div>
-            <b style={{ fontSize: 20 }}>{me.name}</b>
-            {me.email && <small style={{ display: 'block', overflowWrap: 'anywhere' }}>{me.email}</small>}
-            {me.phone && <small>{me.phone}</small>}
-          </div>
-          <button type="button" className="tg lnk" onClick={ui.openEditProfile}>
-            Edit
+      <Sec title="Household" />
+      <Link to="../household" className="pcd hh">
+        <span className="bi" aria-hidden="true">
+          🏠
+        </span>
+        <span className="pcn">
+          <b>{house.household.name}</b>
+          <small>
+            {house.members.length} {house.members.length === 1 ? 'housemate' : 'housemates'}
+          </small>
+        </span>
+        <Icon name="right" size={18} />
+      </Link>
+
+      <Sec title="Appearance" />
+      <div className="chips" role="radiogroup" aria-label="Colour theme">
+        {THEMES.map(([key, label]) => (
+          <button key={key} type="button" role="radio" aria-checked={theme === key} className={`ch ${theme === key ? 'on' : ''}`} onClick={() => save({ theme: key })}>
+            {label}
           </button>
-        </div>
-        <div className="dl" style={{ margin: '14px 0 0' }}>
-          <div>
-            <span>E-transfer</span>
-            <b>{me.etransferEmail || 'Not added'}</b>
-          </div>
-          <div>
-            <span>Bank</span>
-            <b>{me.bankName || 'Not added'}</b>
-          </div>
-        </div>
-        <small className="hint" style={{ margin: '8px 4px 0' }}>
-          Housemates see these details when they pay you.
-        </small>
+        ))}
       </div>
 
-      <Section title="Household">
-        <Link to="household" className="card hcard" style={{ textDecoration: 'none' }}>
-          <div className="hch">
-            <span className="em" aria-hidden="true">
-              🏠
-            </span>
-            <div>
-              <b>{house.household.name}</b>
-              <small>
-                {house.members.length} {house.members.length === 1 ? 'housemate' : 'housemates'}
-              </small>
-            </div>
-            <Icon name="next" size={18} />
-          </div>
-          <div className="avs" style={{ justifyContent: 'flex-start', margin: '12px 0 0' }}>
-            {house.members.map((m) => (
-              <Avatar key={m.id} name={m.name} hue={m.hue} size={38} />
-            ))}
-          </div>
-        </Link>
-      </Section>
-
-      <Section title="Appearance">
-        <div className="chips" role="radiogroup" aria-label="Colour theme">
-          {THEMES.map(([key, label]) => (
-            <button
-              key={key}
-              type="button"
-              role="radio"
-              aria-checked={settings.theme === key}
-              className={`ch ${settings.theme === key ? 'on' : ''}`}
-              onClick={() => save({ theme: key })}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      </Section>
-
-      <Section title="Settings">
-        <div className="card sgrp">
-          <Toggle label="Notifications" sub="Reminder emails start soon" on={settings.notifyEnabled} onChange={(v) => save({ notifyEnabled: v })} />
-          {settings.notifyEnabled && (
-            <>
-              <Toggle label="Bill reminders" sub="2 days before a bill is due" on={settings.notifyBills} onChange={(v) => save({ notifyBills: v })} />
-              <Toggle label="Chore reminders" sub="The morning a chore is due" on={settings.notifyChores} onChange={(v) => save({ notifyChores: v })} />
-            </>
-          )}
-          <div className="srow" style={{ cursor: 'default' }}>
-            <div>
-              <b>Currency</b>
-            </div>
-            <small>{house.household.currency}</small>
-          </div>
-          <button type="button" className="srow" onClick={() => toast('Help and feedback arrives soon')}>
-            <div>
-              <b>Help and feedback</b>
-            </div>
-            <Icon name="next" size={16} />
-          </button>
-        </div>
-      </Section>
+      <Sec title="Settings" />
+      <div className="card2" style={{ padding: '2px 16px' }}>
+        <Toggle label="Notifications" on={settings.notifyEnabled} onChange={(v) => save({ notifyEnabled: v })} />
+        {settings.notifyEnabled && (
+          <>
+            <Toggle label="Bill reminders" sub="2 days before a bill is due" on={settings.notifyBills} onChange={(v) => save({ notifyBills: v })} />
+            <Toggle label="Chore reminders" sub="The morning a chore is due" on={settings.notifyChores} onChange={(v) => save({ notifyChores: v })} />
+          </>
+        )}
+      </div>
+      <small className="hint" style={{ margin: '0 4px 12px' }}>
+        Reminders show in the app today. Emails start soon.
+      </small>
 
       <button
         type="button"
         className="btn sec"
-        style={{ marginTop: 12 }}
         onClick={() => (house.mode === 'demo' ? toast('This is the demo, there’s no account to log out of') : void supabase.auth.signOut())}
       >
         Log out

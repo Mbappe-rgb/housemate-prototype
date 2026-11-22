@@ -4,7 +4,7 @@ import { useAuth } from '../../app/auth'
 import { Field } from '../../components/Field'
 import { supabase } from '../../lib/supabase'
 import { friendlyHouseholdError } from '../../lib/householdErrors'
-import { AuthLayout, BackBar, FormError, Hero } from '../auth/AuthLayout'
+import { AuthPage, FormError, Spacer } from '../auth/AuthLayout'
 import { InvitePanelView } from '../invites/InvitePanel'
 
 const SUGGESTIONS = ['The flat', 'Maple house', 'Main street household']
@@ -46,10 +46,7 @@ export function CreateHouseholdPage() {
 
   if (step === 'name') {
     return (
-      <AuthLayout>
-        <BackBar to="/setup/household" step={1} />
-        <h1>Name your household</h1>
-        <p>Your housemates will see this name. You’ll be its admin.</p>
+      <AuthPage title="Name your household" subtitle="Your housemates will see this name. You’ll be its admin." back="/setup/household" step={1}>
         <form onSubmit={create} noValidate style={{ display: 'contents' }}>
           <Field label="Household name" placeholder="e.g. Weber street household" maxLength={60} value={name} onChange={(e) => setName(e.target.value)} />
           <div className="chips" style={{ marginTop: 12 }}>
@@ -60,26 +57,23 @@ export function CreateHouseholdPage() {
             ))}
           </div>
           <FormError message={error} />
-          <div className="grow" />
+          <Spacer />
           <button type="submit" className="btn" disabled={busy || !name.trim()}>
             {busy ? 'Creating…' : 'Continue'}
           </button>
         </form>
-      </AuthLayout>
+      </AuthPage>
     )
   }
 
   if (step === 'invite') {
     return (
-      <AuthLayout>
-        {/* No back button: the household already exists */}
-        <BackBar step={2} />
-        <h1>Invite your housemates</h1>
-        <p>Pick whichever is easiest. You’ll approve each person who asks to join.</p>
+      // No back button: the household already exists
+      <AuthPage title="Invite your housemates" subtitle="Pick whichever is easiest. You’ll approve each person who asks to join." step={2}>
         <InvitePanelView
           token={token}
           householdName={name.trim()}
-          emptyMessage="You can invite people later from Profile → Household."
+          emptyMessage="You can invite people later from the Household tab."
           resetting={resetting}
           onReset={async () => {
             if (!householdId) return
@@ -89,25 +83,25 @@ export function CreateHouseholdPage() {
             if (data) setToken(data)
           }}
         />
-        <div className="grow" />
+        <Spacer />
         <button type="button" className="btn" onClick={() => setStep('ready')}>
           Continue
         </button>
         <button type="button" className="lk" onClick={() => setStep('ready')}>
           Skip for now
         </button>
-      </AuthLayout>
+      </AuthPage>
     )
   }
 
   return (
-    <AuthLayout>
-      <BackBar onBack={() => setStep('invite')} step={3} />
-      <Hero
-        emoji="🎉"
-        title={`${name.trim()} is ready`}
-        text="When someone uses your link, you’ll see their request on your dashboard to approve."
-      />
+    <AuthPage
+      title="You’re all set"
+      subtitle={`${name.trim()} is ready. When someone uses your link, you’ll see their request on your dashboard to approve.`}
+      back={() => setStep('invite')}
+      step={3}
+    >
+      <Spacer />
       <button
         type="button"
         className="btn"
@@ -120,6 +114,6 @@ export function CreateHouseholdPage() {
       >
         Go to dashboard
       </button>
-    </AuthLayout>
+    </AuthPage>
   )
 }

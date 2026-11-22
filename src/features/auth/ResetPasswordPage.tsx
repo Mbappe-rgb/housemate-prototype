@@ -5,7 +5,7 @@ import { friendlyAuthError } from '../../lib/authErrors'
 import { PasswordField } from '../../components/Field'
 import { LoadingScreen } from '../../components/LoadingScreen'
 import { useAuth } from '../../app/auth'
-import { AuthLayout, FormError, Hero } from './AuthLayout'
+import { AuthPage, FormError, Spacer } from './AuthLayout'
 
 /** Opened from the reset email. Supabase signs them in from the link, then they pick a new password. */
 export function ResetPasswordPage() {
@@ -20,12 +20,12 @@ export function ResetPasswordPage() {
 
   if (!auth.session) {
     return (
-      <AuthLayout>
-        <Hero emoji="⏰" title="Link expired" text="This reset link is invalid or has expired. Request a new one." />
+      <AuthPage title="Link expired" subtitle="This reset link is invalid or has expired. Request a new one.">
+        <Spacer />
         <Link to="/forgot-password" className="btn">
           Send a new link
         </Link>
-      </AuthLayout>
+      </AuthPage>
     )
   }
 
@@ -42,19 +42,16 @@ export function ResetPasswordPage() {
   }
 
   return (
-    <AuthLayout>
-      <div style={{ height: 64 }} />
-      <h1>Choose a new password</h1>
-      <p>Pick something you haven’t used here before.</p>
+    <AuthPage title="Choose a new password" subtitle="Pick something you haven’t used here before.">
       <form onSubmit={onSubmit} noValidate style={{ display: 'contents' }}>
         <PasswordField label="New password" placeholder="New password, 8+ characters" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} />
         <PasswordField label="Repeat new password" placeholder="Repeat new password" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} />
         <FormError message={error} />
-        <div className="grow" />
+        <Spacer />
         <button type="submit" className="btn" disabled={busy}>
           {busy ? 'Saving…' : 'Save password'}
         </button>
       </form>
-    </AuthLayout>
+    </AuthPage>
   )
 }

@@ -17,7 +17,7 @@ const STATES: [DemoState, string][] = [
  * The "Prototype" pill switches palette and data state. Nothing here touches the database.
  */
 export function DemoApp() {
-  const [theme, setTheme] = useState<Theme>('lime')
+  const [theme, setTheme] = useState<Theme>('forest')
   const [state, setState] = useState<DemoState>('owe')
   const [open, setOpen] = useState(false)
   useTheme(theme)
@@ -28,7 +28,7 @@ export function DemoApp() {
         <AppShell />
       </div>
       <button type="button" className="pbtn" onClick={() => setOpen(true)} aria-label="Demo controls">
-        <Icon name="settings" size={13} />
+        <Icon name="tune" size={13} />
         Demo
       </button>
       {open && (

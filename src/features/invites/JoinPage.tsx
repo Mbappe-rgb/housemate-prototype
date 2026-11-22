@@ -4,7 +4,7 @@ import { useAuth } from '../../app/auth'
 import { LoadingScreen } from '../../components/LoadingScreen'
 import { supabase } from '../../lib/supabase'
 import { friendlyHouseholdError } from '../../lib/householdErrors'
-import { AuthLayout, FormError, Hero } from '../auth/AuthLayout'
+import { AuthPage, FormError, Spacer } from '../auth/AuthLayout'
 import { clearPendingInvite, savePendingInvite } from './pendingInvite'
 import { formatCode, parseInviteInput } from './inviteFormat'
 
@@ -55,36 +55,31 @@ export function JoinPage() {
   if (preview.status !== 'ok') return <Problem kind={preview.status} />
 
   const header = (
-    <>
-      <div style={{ height: 40 }} />
-      <h1>Join this household?</h1>
-      <div className="card lk2" style={{ textAlign: 'center', padding: 22 }}>
-        <div className="logo sm" aria-hidden="true">
-          🏠
-        </div>
-        <b style={{ fontSize: 20 }}>{preview.household_name}</b>
-        <small style={{ display: 'block', margin: '4px 0 14px' }}>
-          {preview.member_count} {preview.member_count === 1 ? 'housemate' : 'housemates'}
-        </small>
-        <div className="avs" aria-hidden="true">
-          {preview.members.map((m, i) => (
-            <span key={i} className="av" style={{ width: 46, height: 46, fontSize: 19, background: `hsl(${m.hue} 62% 62%)` }}>
-              {m.initial}
-            </span>
-          ))}
-        </div>
+    <div className="card2" style={{ textAlign: 'center', padding: 22 }}>
+      <span className="bi" style={{ margin: '0 auto 10px', width: 56, height: 56, fontSize: 28 }} aria-hidden="true">
+        🏠
+      </span>
+      <b style={{ fontSize: 20 }}>{preview.household_name}</b>
+      <small className="hint" style={{ margin: '4px 0 14px' }}>
+        {preview.member_count} {preview.member_count === 1 ? 'housemate' : 'housemates'}
+      </small>
+      <div className="avs" style={{ justifyContent: 'center' }} aria-hidden="true">
+        {preview.members.map((m, i) => (
+          <span key={i} className="av" style={{ width: 46, fontSize: 17, background: `hsl(${m.hue} 70% 90%)`, color: `hsl(${m.hue} 45% 32%)` }}>
+            {m.initial}
+          </span>
+        ))}
       </div>
-    </>
+    </div>
   )
 
   // Not signed in: sign up or log in first, then come back here
   if (!auth.session) {
     return (
-      <AuthLayout>
+      <AuthPage title="Join this household?" subtitle="Create an account or log in, then ask the admin to let you in.">
         {header}
-        <p style={{ marginTop: 16 }}>Create an account or log in, then ask the admin to let you in.</p>
-        <div className="grow" />
-        <Link to="/signup" className="btn">
+        <Spacer />
+        <Link to="/privacy" className="btn">
           Create account to join
         </Link>
         <Link to="/login" className="btn sec" style={{ marginTop: 10 }}>
@@ -100,7 +95,7 @@ export function JoinPage() {
         >
           Not now
         </button>
-      </AuthLayout>
+      </AuthPage>
     )
   }
 
@@ -108,14 +103,16 @@ export function JoinPage() {
   if (auth.membership) {
     const same = auth.membership.household.id === preview.household_id
     return (
-      <AuthLayout>
-        {header}
-        <p style={{ marginTop: 16 }}>
-          {same
+      <AuthPage
+        title="Join this household?"
+        subtitle={
+          same
             ? 'You’re already in this household.'
-            : `You’re already in ${auth.membership.household.name}. To join another household, leave yours first from Profile → Household.`}
-        </p>
-        <div className="grow" />
+            : `You’re already in ${auth.membership.household.name}. To join another, leave yours first from the Household tab.`
+        }
+      >
+        {header}
+        <Spacer />
         <button
           type="button"
           className="btn"
@@ -126,16 +123,15 @@ export function JoinPage() {
         >
           Go to dashboard
         </button>
-      </AuthLayout>
+      </AuthPage>
     )
   }
 
   return (
-    <AuthLayout>
+    <AuthPage title="Join this household?" subtitle="The household admin will get your request and can approve it.">
       {header}
-      <p style={{ marginTop: 16 }}>The household admin will get your request and can approve it.</p>
       <FormError message={error} />
-      <div className="grow" />
+      <Spacer />
       <button
         type="button"
         className="btn"
@@ -162,7 +158,7 @@ export function JoinPage() {
       >
         Not this one
       </button>
-    </AuthLayout>
+    </AuthPage>
   )
 }
 
@@ -170,11 +166,11 @@ function Problem({ kind }: { kind: string }) {
   const p = PROBLEMS[kind] ?? PROBLEMS.invalid
   useEffect(() => clearPendingInvite(), [])
   return (
-    <AuthLayout>
-      <Hero emoji={p.emoji} title={p.title} text={p.text} />
+    <AuthPage title={`${p.emoji} ${p.title}`} subtitle={p.text}>
+      <Spacer />
       <Link to="/" className="btn">
         Go to HouseMate
       </Link>
-    </AuthLayout>
+    </AuthPage>
   )
 }

@@ -5,11 +5,12 @@ export type AppUI = {
   openBill: (billId: string) => void
   openAddBill: () => void
   openAddChore: () => void
-  openAddMenu: () => void
   confirmChore: (choreId: string) => void
   openChore: (choreId: string) => void
   openNotifications: () => void
   openEditProfile: () => void
+  openMember: (memberId: string) => void
+  openReports: () => void
   confirmLeave: () => void
   confirmRemove: (memberId: string) => void
 }

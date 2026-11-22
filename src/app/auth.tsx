@@ -10,6 +10,7 @@ export type Profile = {
   notify_enabled: boolean
   notify_bills: boolean
   notify_chores: boolean
+  etransfer: string | null
 }
 
 export type Membership = {
@@ -62,7 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const load = useCallback(async (uid: string) => {
     const [profileRes, memberRes] = await Promise.all([
-      supabase.from('profiles').select('id, display_name, avatar_hue, theme, notify_enabled, notify_bills, notify_chores').eq('id', uid).maybeSingle(),
+      supabase.from('profiles').select('id, display_name, avatar_hue, theme, notify_enabled, notify_bills, notify_chores, etransfer').eq('id', uid).maybeSingle(),
       supabase
         .from('household_members')
         .select('role, household:households(id, name)')

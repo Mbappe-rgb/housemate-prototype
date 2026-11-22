@@ -20,7 +20,7 @@ export function ChoreSheet({ choreId, onClose }: { choreId: string; onClose: () 
   return (
     <Sheet label="Chore details" onClose={onClose}>
       <div className="top">
-        <span className="em" aria-hidden="true">
+        <span className="bi" style={{ width: 44, height: 44, fontSize: 22 }} aria-hidden="true">
           {chore.emoji}
         </span>
         <div>
@@ -89,9 +89,6 @@ export function ChoreSheet({ choreId, onClose }: { choreId: string; onClose: () 
             Delete chore
           </button>
         ))}
-      <button type="button" className="lk" onClick={onClose}>
-        Close
-      </button>
     </Sheet>
   )
 }

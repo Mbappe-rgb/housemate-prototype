@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router'
 import { Field } from '../../components/Field'
-import { AuthLayout, BackBar, FormError } from '../auth/AuthLayout'
+import { AuthPage, FormError, Spacer } from '../auth/AuthLayout'
 import { formatCode, parseInviteInput } from '../invites/inviteFormat'
 
 /** Paste an invite link or type the code. */
@@ -18,10 +18,7 @@ export function JoinCodePage() {
   }
 
   return (
-    <AuthLayout>
-      <BackBar to="/setup/household" />
-      <h1>Join a household</h1>
-      <p>Paste the invite link you were sent, or type the code.</p>
+    <AuthPage title="Join a household" subtitle="Paste the invite link you were sent, or type the code." back="/setup/household">
       <form onSubmit={onSubmit} noValidate style={{ display: 'contents' }}>
         <Field
           label="Invite link or code"
@@ -36,15 +33,17 @@ export function JoinCodePage() {
           }}
         />
         <FormError message={error} />
-        <div className="card lk2" style={{ marginTop: 14 }}>
+        <div className="card2" style={{ marginTop: 14 }}>
           <b>Got a QR code?</b>
-          <small style={{ display: 'block', marginTop: 4 }}>Point your phone’s camera at it and tap the link that appears.</small>
+          <small className="hint" style={{ marginTop: 4 }}>
+            Point your phone’s camera at it and tap the link that appears.
+          </small>
         </div>
-        <div className="grow" />
+        <Spacer />
         <button type="submit" className="btn" disabled={value.trim().length < 4}>
           Continue
         </button>
       </form>
-    </AuthLayout>
+    </AuthPage>
   )
 }

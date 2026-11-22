@@ -1,76 +1,103 @@
-/* Theme tokens from the prototype. The theme is set on <html data-theme="...">.
-   Lime is the default; the others become a profile setting later. */
+/* v5 theme tokens (docs/design/v5-style-guide.md). Set on <html data-theme="forest|night|lilac">.
+   Forest is the default. Components never hard-code a colour; they use these tokens. */
 :root,
-:root[data-theme='lime'] {
-  --sheet: rgba(255, 255, 255, 0.74);
-  --bg: #f4f4f2;
-  --b1: #e6f8a2;
-  --ink: #0f0f0f;
-  --mute: #7c7c79;
-  --btn: #111;
-  --on: #fff;
-  --acc: #3e9a55;
-  --card: #fff;
-  --glass: rgba(255, 255, 255, 0.55);
-  --gb: rgba(255, 255, 255, 0.9);
-  --track: #e6e6e2;
+:root[data-theme='forest'] {
+  --page: #e6e9e0;
+  --sheet: #fff;
+  --bg: #f4f4f1;
+  --card: #fcfcfa;
   --soft: #f1f1ee;
-  --warn: #c77a17;
-  --sh: rgba(60, 70, 20, 0.3);
+  --panel: #f8f8f6; /* inner panels in sheets (payment progress, account details) */
+  --ink: #0b0b0b;
+  --mute: #8a8a86;
+  --faint: #b3b3ae;
+  --line: #e8e8e3;
+  --btn: #0b0b0b;
+  --on: #fff;
+  --acc: #3b9b4e;
+  --chip: #ebf7c6;
+  --chipl: #c9e186;
+  --warn: #d9822b;
+  --dng: #e5534b;
+  --h1: #2e4a27;
+  --h2: #587a38;
+  --h3: #b8d07e;
+  --hink: #fff;
+  --hmute: rgba(255, 255, 255, 0.62);
+  --hg: rgba(255, 255, 255, 0.14);
+  --hgl: rgba(255, 255, 255, 0.3);
+  --glass: rgba(255, 255, 255, 0.82);
+  --sh: rgba(30, 50, 20, 0.28);
   color-scheme: light;
 }
 
-:root[data-theme='sage'] {
-  --sheet: rgba(255, 255, 255, 0.74);
-  --bg: #f1f3f0;
-  --b1: #cfe3d2;
-  --ink: #1d2b22;
-  --mute: #6b7c70;
-  --btn: #244c35;
-  --on: #fff;
-  --acc: #3f7d58;
-  --card: #fff;
-  --glass: rgba(255, 255, 255, 0.55);
-  --gb: rgba(255, 255, 255, 0.9);
-  --track: #e1e7e1;
-  --soft: #eef2ee;
-  --warn: #b9792a;
-  --sh: rgba(40, 80, 55, 0.3);
-}
-
-:root[data-theme='midnight'] {
-  --sheet: rgba(28, 34, 52, 0.72);
-  --bg: #0e1118;
-  --b1: #1f2f63;
-  --ink: #f1f3f8;
-  --mute: #8f9bb5;
-  --btn: #fff;
-  --on: #0e1118;
-  --acc: #5fd6a4;
-  --card: rgba(255, 255, 255, 0.07);
-  --glass: rgba(255, 255, 255, 0.09);
-  --gb: rgba(255, 255, 255, 0.16);
-  --track: rgba(255, 255, 255, 0.14);
-  --soft: rgba(255, 255, 255, 0.08);
-  --warn: #f2b35e;
+:root[data-theme='night'] {
+  --page: #060806;
+  --sheet: #131713;
+  --bg: #0e110e;
+  --card: #1a1f19;
+  --soft: #1f251e;
+  --panel: #20261f;
+  --ink: #f2f4ef;
+  --mute: #9aa394;
+  --faint: #646b60;
+  --line: #262c24;
+  --btn: #f2f4ef;
+  --on: #0e110e;
+  --acc: #7bd08c;
+  --chip: #27351d;
+  --chipl: #587a38;
+  --warn: #f0b35e;
+  --dng: #ff7b72;
+  --h1: #0e1b0e;
+  --h2: #1f3a1b;
+  --h3: #3d5e2b;
+  --hink: #fff;
+  --hmute: rgba(255, 255, 255, 0.6);
+  --hg: rgba(255, 255, 255, 0.1);
+  --hgl: rgba(255, 255, 255, 0.22);
+  --glass: rgba(26, 31, 25, 0.82);
   --sh: rgba(0, 0, 0, 0.7);
   color-scheme: dark;
 }
 
-:root[data-theme='pop'] {
-  --sheet: rgba(255, 255, 255, 0.76);
-  --bg: #fff5f9;
-  --b1: #dccbff;
-  --ink: #2a1b45;
-  --mute: #8070a0;
-  --btn: #2a1b45;
-  --on: #fff;
-  --acc: #12a377;
+:root[data-theme='lilac'] {
+  --page: #ebe7f6;
+  --sheet: #fff;
+  --bg: #f6f4fb;
   --card: #fff;
-  --glass: rgba(255, 255, 255, 0.6);
-  --gb: rgba(255, 255, 255, 0.95);
-  --track: #efe6f5;
-  --soft: #f7f0fc;
+  --soft: #f1edf9;
+  --panel: #faf9fd;
+  --ink: #1e1535;
+  --mute: #8a82a3;
+  --faint: #b8b1cc;
+  --line: #e9e5f3;
+  --btn: #1e1535;
+  --on: #fff;
+  --acc: #2fa37c;
+  --chip: #e9e1ff;
+  --chipl: #bfa9ff;
   --warn: #e8791f;
-  --sh: rgba(122, 77, 245, 0.35);
+  --dng: #e5534b;
+  --h1: #4a2c9a;
+  --h2: #8a63e8;
+  --h3: #f2a9d2;
+  --hink: #fff;
+  --hmute: rgba(255, 255, 255, 0.7);
+  --hg: rgba(255, 255, 255, 0.16);
+  --hgl: rgba(255, 255, 255, 0.34);
+  --glass: rgba(255, 255, 255, 0.84);
+  --sh: rgba(74, 44, 154, 0.3);
+}
+
+/* Semantic colours shared by every theme */
+:root {
+  --ok: #2e9b4f;
+  --ok-ink: #1f7a3a;
+  --amber: #e69a1a;
+  --amber-ink: #9a5b00;
+  --amber-on: #f7e7ca;
+  --red-ink: #b42f2f;
+  --ghost: color-mix(in srgb, var(--ink) 8%, transparent);
+  --rounded: ui-rounded, 'SF Pro Rounded', 'SF Pro Display', Inter, system-ui, sans-serif;
 }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { HouseContext, type House, type HouseActions, type JoinRequest, type Settings } from './house'
+import { HouseContext, type House, type HouseActions, type JoinRequest, type Reminder, type Settings } from './house'
 import { useAuth } from '../../app/auth'
 import { supabase } from '../../lib/supabase'
 import { todayIn } from '../../lib/dates'
@@ -31,6 +31,8 @@ export function LiveHouseProvider({ children }: { children: ReactNode }) {
   const [members, setMembers] = useState<Member[] | null>(null)
   const [inviteCode, setInviteCode] = useState<string | null>(null)
   const [joinRequests, setJoinRequests] = useState<JoinRequest[]>([])
+  const [reminders, setReminders] = useState<Reminder[]>([])
+  const [remindedToday, setRemindedToday] = useState<Record<string, string[]>>({})
   const [error, setError] = useState<string | null>(null)
   // Settings change on screen right away; the saved profile catches up
   const [settingsDraft, setSettingsDraft] = useState<Partial<Settings>>({})
@@ -53,13 +55,40 @@ export function LiveHouseProvider({ children }: { children: ReactNode }) {
     )
   }, [])
 
+  // Reminders sent to me, and the ones I sent in the last day (so Remind shows "Reminded")
+  const loadReminders = useCallback(async () => {
+    if (!userId) return
+    const since = new Date(Date.now() - 864e5).toISOString()
+    const { data, error } = await supabase
+      .from('notifications')
+      .select('id, user_id, from_user, bill_id, created_at, read_at')
+      .or(`user_id.eq.${userId},and(from_user.eq.${userId},created_at.gte.${since})`)
+      .order('created_at', { ascending: false })
+      .limit(50)
+    if (error) return
+    setReminders(
+      data
+        .filter((n) => n.user_id === userId)
+        .map((n) => ({ id: n.id, billId: n.bill_id, fromId: n.from_user, createdAt: n.created_at, read: !!n.read_at })),
+    )
+    const sent: Record<string, string[]> = {}
+    for (const n of data) if (n.from_user === userId && n.bill_id) (sent[n.bill_id] ??= []).push(n.user_id)
+    setRemindedToday(sent)
+  }, [userId])
+
+  useEffect(() => {
+    // loadReminders() sets state only after the network call returns
+    // eslint-disable-next-line react/set-state-in-effect
+    void loadReminders()
+  }, [loadReminders])
+
   const load = useCallback(
     async (hid: string) => {
       const [h, m, link] = await Promise.all([
         supabase.from('households').select('id, name, timezone, currency').eq('id', hid).maybeSingle(),
         supabase
           .from('household_members')
-          .select('role, joined_at, profile:profiles(id, display_name, avatar_hue, etransfer_email, phone, bank_name)')
+          .select('role, joined_at, profile:profiles(id, display_name, full_name, avatar_hue, etransfer)')
           .eq('household_id', hid)
           .order('joined_at'),
         supabase.rpc('get_invite_link', { p_household: hid }),
@@ -84,9 +113,8 @@ export function LiveHouseProvider({ children }: { children: ReactNode }) {
             name: row.profile!.display_name ?? 'Housemate',
             hue: row.profile!.avatar_hue,
             role: row.role as 'owner' | 'member',
-            etransferEmail: row.profile!.etransfer_email,
-            phone: row.profile!.phone,
-            bankName: row.profile!.bank_name,
+            fullName: row.profile!.full_name,
+            etransfer: row.profile!.etransfer,
           })),
       )
     },
@@ -122,9 +150,10 @@ export function LiveHouseProvider({ children }: { children: ReactNode }) {
     if (tables.has('household_members') || tables.has('households') || tables.has('invites')) void load(householdId)
     if (tables.has('join_requests') && isAdmin) void loadRequests(householdId)
   })
-  // Removed from the household, or made admin: refresh who I am
+  // Removed from the household, made admin, or reminded: refresh what's mine
   useLiveChannel(userId ? `user:${userId}` : null, (tables) => {
     if (tables.has('household_members')) void refreshAuth()
+    if (tables.has('notifications')) void loadReminders()
   })
 
   const actions = useMemo<HouseActions>(() => {
@@ -144,6 +173,18 @@ export function LiveHouseProvider({ children }: { children: ReactNode }) {
       },
       ...live.actions,
       ...liveChores.actions,
+      sendReminder: async (billId, memberId) => {
+        const { data, error } = await supabase.rpc('send_bill_reminder', { p_bill: billId, ...(memberId ? { p_user: memberId } : {}) })
+        if (error) return toast(friendlyHouseholdError(error))
+        const name = memberId ? (members?.find((m) => m.id === memberId)?.name ?? 'them') : null
+        const sent = Number(data ?? 0)
+        toast(sent ? `Reminder sent to ${name ?? (sent === 1 ? '1 housemate' : `${sent} housemates`)}` : `${name ?? 'Everyone'} was already reminded today`)
+        await loadReminders()
+      },
+      markRemindersRead: async () => {
+        setReminders((all) => all.map((r) => ({ ...r, read: true })))
+        await supabase.rpc('mark_notifications_read')
+      },
       saveProfile: async (edit) => {
         if (!userId) return 'You’re not signed in.'
         const blankToNull = (v: string) => (v.trim() ? v.trim() : null)
@@ -151,9 +192,8 @@ export function LiveHouseProvider({ children }: { children: ReactNode }) {
           .from('profiles')
           .update({
             display_name: edit.displayName.trim().slice(0, 40),
-            etransfer_email: blankToNull(edit.etransferEmail),
-            phone: blankToNull(edit.phone),
-            bank_name: blankToNull(edit.bankName),
+            full_name: blankToNull(edit.fullName),
+            etransfer: blankToNull(edit.etransfer),
           })
           .eq('id', userId)
         if (error) return 'We couldn’t save your profile. Please try again.'
@@ -192,7 +232,7 @@ export function LiveHouseProvider({ children }: { children: ReactNode }) {
         await Promise.all([loadRequests(householdId), approve ? load(householdId) : Promise.resolve()])
       },
     }
-  }, [toast, userId, refreshAuth, householdId, load, loadRequests, joinRequests, live.actions, liveChores.actions])
+  }, [toast, userId, refreshAuth, householdId, load, loadRequests, loadReminders, joinRequests, members, live.actions, liveChores.actions])
 
   if (error) {
     return (
@@ -224,7 +264,7 @@ export function LiveHouseProvider({ children }: { children: ReactNode }) {
     chores: liveChores.chores,
     inviteCode,
     settings: {
-      theme: auth.profile?.theme ?? 'lime',
+      theme: auth.profile?.theme ?? 'forest',
       notifyEnabled: auth.profile?.notify_enabled ?? true,
       notifyBills: auth.profile?.notify_bills ?? true,
       notifyChores: auth.profile?.notify_chores ?? true,
@@ -232,8 +272,8 @@ export function LiveHouseProvider({ children }: { children: ReactNode }) {
     },
     isAdmin,
     joinRequests: isAdmin ? joinRequests : [],
-    moneyReady: true,
-    choresReady: true,
+    reminders,
+    remindedToday,
     actions,
   }
 

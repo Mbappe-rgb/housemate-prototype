@@ -2,6 +2,30 @@
 
 Short record of product and technical decisions, newest first. Each one says what we chose and why.
 
+## 2026-11-22: v5 redesign
+
+The app now follows the v5 prototype, screen map and style guide in `docs/design/`. All earlier features stay.
+
+- **Two-step payments.** A housemate taps Pay, sends the e-Transfer, and marks it **Sent**. The person who paid
+  the bill then **confirms** it, and only then is it **Paid**. The payer can also mark someone paid directly, or
+  undo either step. A bill's split can't be edited once anyone has sent or paid, and such a bill can't be deleted.
+- **Reminders are in the app for now.** The payer can remind people who haven't paid, at most once per person
+  per bill per day. Reminders appear in a bell on Home and arrive live. Emails come in Phase 7, and so does
+  "email this report".
+- **Four tabs:** Home, Schedule (bills and chores by period, with a calendar), Household and Profile. A + button
+  adds a bill or a chore. Old links (`/bills`, `/calendar`, `/chores`) redirect.
+- **Reports** (Household → Reports) cover personal or household payments for a month or a date range, with a
+  CSV download. Payments are grouped by the bill's due date.
+- **Sign-up** now starts with intro slides and a privacy step, and asks for the person's e-Transfer details after
+  sign-up. Profiles gain a full name, one `etransfer` field (email or phone) and the date privacy was accepted.
+- **Themes** are Forest (default), Night and Lilac. Saved old names are mapped (lime/sage → Forest, midnight →
+  Night, pop → Lilac).
+- **Left out for now:** Apple/Google sign-in, and photo avatars (initials for now).
+
+**Why additive:** the migration only adds columns, functions and a `notifications` table, so the current live app
+keeps working until this branch is merged. The old profile columns (`etransfer_email`, `phone`, `bank_name`) and
+old theme names can be removed after that.
+
 ## 2026-10-31: Live updates, receipts and the installable app (Phase 6)
 
 - **Live updates use private broadcast channels**, not "postgres changes". The database sends a tiny
