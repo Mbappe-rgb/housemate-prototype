@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { friendlyHouseholdError } from '../../lib/householdErrors'
 import { addDays, yearMonth, type ISODate } from '../../lib/dates'
-import type { Bill } from '../../lib/bills'
+import type { Bill, Share } from '../../lib/bills'
 import type { HouseActions, NewBill } from './house'
 import { ReceiptError, uploadReceipt } from '../../lib/receipts'
 
@@ -11,7 +11,17 @@ const POLL_MS = 60_000
 
 type BillActions = Pick<
   HouseActions,
-  'markPaid' | 'undoPaid' | 'markReceived' | 'addBill' | 'deleteBill' | 'saveSplit' | 'saveBillSettings'
+  | 'markSent'
+  | 'undoSent'
+  | 'payProvider'
+  | 'undoProvider'
+  | 'confirmShare'
+  | 'markUnpaid'
+  | 'addBill'
+  | 'deleteBill'
+  | 'saveSplit'
+  | 'saveBillSettings'
+  | 'fetchBills'
 >
 
 type Row = {
@@ -25,8 +35,11 @@ type Row = {
   created_by: string | null
   recurrence: string
   split_mode: string
-  bill_shares: { user_id: string; amount_cents: number; paid_at: string | null; receipt_path: string | null }[]
+  bill_shares: { user_id: string; amount_cents: number; sent_at: string | null; paid_at: string | null; receipt_path: string | null }[]
 }
+
+const SELECT =
+  'id, name, category, emoji, total_cents, due_date, payer_id, created_by, recurrence, split_mode, bill_shares(user_id, amount_cents, sent_at, paid_at, receipt_path)'
 
 function toBill(r: Row): Bill {
   return {
@@ -41,7 +54,7 @@ function toBill(r: Row): Bill {
     recurrence: r.recurrence === 'monthly' ? 'monthly' : 'none',
     splitMode: r.split_mode === 'custom' ? 'custom' : 'equal',
     shares: Object.fromEntries(
-      r.bill_shares.map((s) => [s.user_id, { amountCents: s.amount_cents, paidAt: s.paid_at, receiptPath: s.receipt_path }]),
+      r.bill_shares.map((s) => [s.user_id, { amountCents: s.amount_cents, sentAt: s.sent_at, paidAt: s.paid_at, receiptPath: s.receipt_path }]),
     ),
   }
 }
@@ -60,14 +73,11 @@ export function useLiveBills(householdId: string | null, meId: string | undefine
   const reload = useCallback(async () => {
     if (!householdId) return
     // Look back far enough to catch anything still unpaid from earlier months
-    const since = addDays(today, -120)
     const { data, error } = await supabase
       .from('bills')
-      .select(
-        'id, name, category, emoji, total_cents, due_date, payer_id, created_by, recurrence, split_mode, bill_shares(user_id, amount_cents, paid_at, receipt_path)',
-      )
+      .select(SELECT)
       .eq('household_id', householdId)
-      .gte('due_date', since)
+      .gte('due_date', addDays(today, -120))
       .order('due_date')
     if (error) return
     setBills((data as Row[]).map(toBill))
@@ -111,43 +121,67 @@ export function useLiveBills(householdId: string | null, meId: string | undefine
       await reload()
       return error ? friendlyHouseholdError(error) : null
     }
-    const setPaid = (billId: string, userId: string, paid: boolean) => (all: Bill[]) =>
-      all.map((b) =>
-        b.id === billId && b.shares[userId]
-          ? { ...b, shares: { ...b.shares, [userId]: { ...b.shares[userId], paidAt: paid ? new Date().toISOString() : null } } }
-          : b,
-      )
+    const setShare = (billId: string, userId: string, change: Partial<Share>) => (all: Bill[]) =>
+      all.map((b) => (b.id === billId && b.shares[userId] ? { ...b, shares: { ...b.shares, [userId]: { ...b.shares[userId], ...change } } } : b))
+    const now = () => new Date().toISOString()
+
+    /** Upload the receipt first, so a failed upload doesn't leave a half-done payment. */
+    const withReceipt = async (billId: string, receipt: File | null | undefined, save: () => Promise<string | null>, ok: string) => {
+      if (!meId || !householdId) return
+      let path: string | null = null
+      if (receipt) {
+        try {
+          path = await uploadReceipt(householdId, billId, meId, receipt)
+        } catch (e) {
+          toast(e instanceof ReceiptError ? e.message : 'The receipt didn’t upload. Please try again.')
+          return
+        }
+      }
+      const error = await save()
+      if (error) return
+      if (path) await run(() => supabase.rpc('attach_receipt', { p_bill: billId, p_path: path }), undefined, `${ok}, receipt attached`)
+      else toast(ok)
+    }
 
     return {
-      markPaid: (billId, receipt) => {
-        if (!meId || !householdId) return
-        void (async () => {
-          // Upload the receipt first, so a failed upload doesn't leave a half-done payment
-          let path: string | null = null
-          if (receipt) {
-            try {
-              path = await uploadReceipt(householdId, billId, meId, receipt)
-            } catch (e) {
-              toast(e instanceof ReceiptError ? e.message : 'The receipt didn’t upload. Please try again.')
-              return
-            }
-          }
-          const error = await run(
-            () => supabase.rpc('set_share_paid', { p_bill: billId, p_user: meId, p_paid: true }),
-            setPaid(billId, meId, true),
-            path ? undefined : `${name(billId)} marked as paid`,
-          )
-          if (!error && path) {
-            await run(() => supabase.rpc('attach_receipt', { p_bill: billId, p_path: path }), undefined, `${name(billId)} marked as paid, receipt attached`)
-          }
-        })()
-      },
-      undoPaid: (billId) => {
+      markSent: (billId, receipt) => {
         if (!meId) return
-        void run(() => supabase.rpc('set_share_paid', { p_bill: billId, p_user: meId, p_paid: false }), setPaid(billId, meId, false))
+        void withReceipt(
+          billId,
+          receipt,
+          () => run(() => supabase.rpc('mark_share_sent', { p_bill: billId, p_sent: true }), setShare(billId, meId, { sentAt: now() })),
+          'Marked as paid. Waiting for the payer to confirm',
+        )
       },
-      markReceived: (billId, memberId) => {
-        void run(() => supabase.rpc('set_share_paid', { p_bill: billId, p_user: memberId, p_paid: true }), setPaid(billId, memberId, true))
+      undoSent: (billId) => {
+        if (!meId) return
+        void run(() => supabase.rpc('mark_share_sent', { p_bill: billId, p_sent: false }), setShare(billId, meId, { sentAt: null }))
+      },
+      payProvider: (billId, receipt) => {
+        if (!meId) return
+        void withReceipt(
+          billId,
+          receipt,
+          () => run(() => supabase.rpc('set_share_paid', { p_bill: billId, p_user: meId, p_paid: true }), setShare(billId, meId, { paidAt: now() })),
+          `${name(billId)} marked as paid`,
+        )
+      },
+      undoProvider: (billId) => {
+        if (!meId) return
+        void run(() => supabase.rpc('set_share_paid', { p_bill: billId, p_user: meId, p_paid: false }), setShare(billId, meId, { paidAt: null }))
+      },
+      confirmShare: (billId, memberId) => {
+        void run(
+          () => supabase.rpc('set_share_paid', { p_bill: billId, p_user: memberId, p_paid: true }),
+          setShare(billId, memberId, { paidAt: now() }),
+          'Payment confirmed',
+        )
+      },
+      markUnpaid: (billId, memberId) => {
+        void run(
+          () => supabase.rpc('set_share_paid', { p_bill: billId, p_user: memberId, p_paid: false }),
+          setShare(billId, memberId, { paidAt: null, sentAt: null }),
+        )
       },
       addBill: (n: NewBill) => {
         if (!householdId) return
@@ -169,8 +203,7 @@ export function useLiveBills(householdId: string | null, meId: string | undefine
           `${n.name} added`,
         )
       },
-      deleteBill: (billId) =>
-        run(() => supabase.rpc('delete_bill', { p_bill: billId }), (all) => all.filter((b) => b.id !== billId), 'Bill deleted'),
+      deleteBill: (billId) => run(() => supabase.rpc('delete_bill', { p_bill: billId }), (all) => all.filter((b) => b.id !== billId), 'Bill deleted'),
       saveSplit: (billId, mode, amounts) => {
         void run(
           () => supabase.rpc('update_bill_split', { p_bill: billId, p_split_mode: mode, ...(mode === 'custom' ? { p_amounts: amounts } : {}) }),
@@ -186,6 +219,21 @@ export function useLiveBills(householdId: string | null, meId: string | undefine
           undefined,
           payerChanged && payerId === meId ? `You’re now paying ${name(billId).toLowerCase()} for everyone` : 'Settings saved',
         )
+      },
+      fetchBills: async (from, to) => {
+        if (!householdId) return []
+        const { data, error } = await supabase
+          .from('bills')
+          .select(SELECT)
+          .eq('household_id', householdId)
+          .gte('due_date', from)
+          .lte('due_date', to)
+          .order('due_date')
+        if (error) {
+          toast('We couldn’t load that period. Please try again.')
+          return []
+        }
+        return (data as Row[]).map(toBill)
       },
     }
   }, [bills, meId, householdId, reload, toast])

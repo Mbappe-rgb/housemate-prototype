@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Avatar } from '../../../components/Avatar'
 import { Segmented } from '../../../components/Segmented'
 import { Sheet } from '../../../components/Sheet'
+import { DatePicker } from '../../../components/DatePicker'
 import { addDays } from '../../../lib/dates'
 import { parseMoney } from '../../../lib/money'
 import { useHouse } from '../../house/house'
@@ -22,7 +23,7 @@ export function AddBillSheet({ onClose }: { onClose: () => void }) {
 
   const total = parseMoney(amount)
   const totalOk = total !== null && total > 0
-  const valid = name.trim().length > 0 && totalOk && splitIsValid(split, house.members, total) && dueDate >= addDays(house.today, -365)
+  const valid = name.trim().length > 0 && totalOk && splitIsValid(split, house.members, total) && dueDate >= house.today
   const payerName = payerId === house.me.id ? 'you' : (house.members.find((m) => m.id === payerId)?.name ?? '')
 
   return (
@@ -41,6 +42,7 @@ export function AddBillSheet({ onClose }: { onClose: () => void }) {
         ]}
         value={type}
         onChange={setType}
+        className="mt"
       />
 
       <h4>Bill name and total</h4>
@@ -101,7 +103,7 @@ export function AddBillSheet({ onClose }: { onClose: () => void }) {
       </small>
 
       <h4>Due date</h4>
-      <input className="fld" type="date" min={addDays(house.today, -365)} max={addDays(house.today, 366)} aria-label="Due date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+      <DatePicker value={dueDate} onChange={setDueDate} today={house.today} min={house.today} max={addDays(house.today, 366)} />
       {type === 'monthly' && <small className="hint">Repeats on this day every month.</small>}
 
       <button

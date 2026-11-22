@@ -1,36 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router'
-import { Icon } from '../../components/Icon'
+import { Navigate } from 'react-router'
 import { LoadingScreen } from '../../components/LoadingScreen'
 import { useToast } from '../../components/Toast'
 import { useAuth } from '../../app/auth'
 import { supabase } from '../../lib/supabase'
 import { friendlyHouseholdError } from '../../lib/householdErrors'
 import { useLiveChannel } from '../../lib/useLiveChannel'
-import { AuthLayout, Hero } from '../auth/AuthLayout'
+import { AuthPage, BigOption, Spacer } from '../auth/AuthLayout'
 import { LogOutButton } from '../auth/LogOutButton'
+import { payStepDone } from './payStep'
 
 type MyRequest = { id: string; status: 'pending' | 'declined'; household_name: string } | null
 
 // Approval arrives through Realtime; this re-check is a backup
 const WAIT_POLL_MS = 30_000
 
-export function BigOption({ emoji, title, text, to }: { emoji: string; title: string; text: string; to: string }) {
-  return (
-    <Link to={to} className="bigopt">
-      <span className="em" aria-hidden="true">
-        {emoji}
-      </span>
-      <div>
-        <b>{title}</b>
-        <small>{text}</small>
-      </div>
-      <Icon name="next" size={18} />
-    </Link>
-  )
-}
-
-/** Signed in, no household: waiting for approval, declined, or choose Create / Join. */
+/** Signed in, no household: waiting for approval, declined, or set up a household. */
 export function HouseholdChoicePage() {
   const auth = useAuth()
   const toast = useToast()
@@ -74,17 +59,15 @@ export function HouseholdChoicePage() {
 
   if (request?.status === 'pending') {
     return (
-      <AuthLayout>
-        <Hero
-          emoji="⏳"
-          title="Waiting for approval"
-          text={
-            <>
-              We asked the admin of <b>{request.household_name}</b> to let you in. You’ll go straight to the dashboard once
-              they approve.
-            </>
-          }
-        />
+      <AuthPage
+        title="Waiting for approval"
+        subtitle={
+          <>
+            We asked the admin of <b>{request.household_name}</b> to let you in. You’ll go straight to the dashboard once they approve.
+          </>
+        }
+      >
+        <Spacer />
         <button type="button" className="btn sec" onClick={() => void check()}>
           Check again
         </button>
@@ -104,14 +87,21 @@ export function HouseholdChoicePage() {
           {busy ? 'Cancelling…' : 'Cancel request'}
         </button>
         <LogOutButton />
-      </AuthLayout>
+      </AuthPage>
     )
   }
 
   if (request?.status === 'declined') {
     return (
-      <AuthLayout>
-        <Hero emoji="🚪" title="Request declined" text={<>The admin of <b>{request.household_name}</b> didn’t approve your request. If that’s a mistake, ask them for a new invite.</>} />
+      <AuthPage
+        title="Request declined"
+        subtitle={
+          <>
+            The admin of <b>{request.household_name}</b> didn’t approve your request. If that’s a mistake, ask them for a new invite.
+          </>
+        }
+      >
+        <Spacer />
         <button
           type="button"
           className="btn"
@@ -122,16 +112,19 @@ export function HouseholdChoicePage() {
         >
           OK
         </button>
-      </AuthLayout>
+      </AuthPage>
     )
   }
 
+  // Right after sign-up: ask how housemates pay you (once; it can be skipped)
+  if (!auth.profile?.etransfer && !payStepDone()) return <Navigate to="/setup/pay" replace />
+
   return (
-    <AuthLayout>
-      <Hero title="Welcome to HouseMate" text="Split bills and share the chores, all in one place." />
-      <BigOption emoji="✨" title="Create a household" text="Start fresh and invite your housemates" to="/setup/create" />
-      <BigOption emoji="🔑" title="Join a household" text="Use an invite link, code or QR" to="/setup/join" />
+    <AuthPage title="Set up your household" subtitle="Create a new one, or join the one you were invited to.">
+      <BigOption icon="household" title="Create a household" text="Start fresh and invite your housemates" to="/setup/create" />
+      <BigOption icon="link" title="Join a household" text="Use an invite link, code or QR" to="/setup/join" />
+      <Spacer />
       <LogOutButton />
-    </AuthLayout>
+    </AuthPage>
   )
 }

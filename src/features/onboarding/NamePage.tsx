@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../app/auth'
 import { Field } from '../../components/Field'
-import { AuthLayout, FormError } from '../auth/AuthLayout'
+import { AuthPage, FormError, Spacer } from '../auth/AuthLayout'
 import { LogOutButton } from '../auth/LogOutButton'
 
 /** Shown to a signed-in person whose profile has no name yet. */
@@ -28,19 +28,16 @@ export function NamePage() {
   }
 
   return (
-    <AuthLayout>
-      <div style={{ height: 64 }} />
-      <h1>What should housemates call you?</h1>
-      <p>This is the name they’ll see on bills and chores.</p>
+    <AuthPage title="What should housemates call you?" subtitle="This is the name they’ll see on bills and chores.">
       <form onSubmit={onSubmit} noValidate style={{ display: 'contents' }}>
         <Field label="First name" placeholder="First name" autoComplete="given-name" maxLength={40} value={name} onChange={(e) => setName(e.target.value)} />
         <FormError message={error} />
-        <div className="grow" />
+        <Spacer />
         <button type="submit" className="btn" disabled={busy}>
           {busy ? 'Saving…' : 'Continue'}
         </button>
       </form>
       <LogOutButton />
-    </AuthLayout>
+    </AuthPage>
   )
 }

@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { centsToInput, formatMoney, parseMoney, splitEqual, sumCents } from './money'
+import { centsToInput, formatMoney, formatMoneyExact, parseMoney, splitEqual, sumCents } from './money'
+
+describe('formatMoneyExact', () => {
+  it('always shows cents', () => {
+    expect(formatMoneyExact(99200)).toBe('$992.00')
+    expect(formatMoneyExact(9640)).toBe('$96.40')
+    expect(formatMoneyExact(0)).toBe('$0.00')
+  })
+})
 
 describe('formatMoney', () => {
   it('drops cents for whole dollars, like the prototype', () => {

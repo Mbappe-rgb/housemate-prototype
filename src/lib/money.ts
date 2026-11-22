@@ -12,6 +12,12 @@ export function formatMoney(cents: number): string {
   return `${sign}$${text}`
 }
 
+/** Always two decimals: $992.00 (used for the You owe / You are owed balances). */
+export function formatMoneyExact(cents: number): string {
+  const sign = cents < 0 ? '-' : ''
+  return `${sign}$${(Math.abs(cents) / 100).toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+}
+
 /**
  * Read what someone typed into a money field ("192.8", "$1,200", "15.") as cents.
  * Returns null if it isn't a valid non-negative amount with at most 2 decimals.

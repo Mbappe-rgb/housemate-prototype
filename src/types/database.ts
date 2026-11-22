@@ -65,6 +65,7 @@ export type Database = {
           marked_by: string | null
           paid_at: string | null
           receipt_path: string | null
+          sent_at: string | null
           user_id: string
         }
         Insert: {
@@ -74,6 +75,7 @@ export type Database = {
           marked_by?: string | null
           paid_at?: string | null
           receipt_path?: string | null
+          sent_at?: string | null
           user_id: string
         }
         Update: {
@@ -83,6 +85,7 @@ export type Database = {
           marked_by?: string | null
           paid_at?: string | null
           receipt_path?: string | null
+          sent_at?: string | null
           user_id?: string
         }
         Relationships: [
@@ -453,18 +456,83 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          bill_id: string | null
+          created_at: string
+          from_user: string | null
+          household_id: string
+          id: string
+          kind: string
+          read_at: string | null
+          user_id: string
+        }
+        Insert: {
+          bill_id?: string | null
+          created_at?: string
+          from_user?: string | null
+          household_id: string
+          id?: string
+          kind: string
+          read_at?: string | null
+          user_id: string
+        }
+        Update: {
+          bill_id?: string | null
+          created_at?: string
+          from_user?: string | null
+          household_id?: string
+          id?: string
+          kind?: string
+          read_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_bill_id_fkey"
+            columns: ["bill_id"]
+            isOneToOne: false
+            referencedRelation: "bills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_from_user_fkey"
+            columns: ["from_user"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_hue: number
           bank_name: string | null
           created_at: string
           display_name: string | null
+          etransfer: string | null
           etransfer_email: string | null
+          full_name: string | null
           id: string
           notify_bills: boolean
           notify_chores: boolean
           notify_enabled: boolean
           phone: string | null
+          privacy_accepted_at: string | null
           theme: string
         }
         Insert: {
@@ -472,12 +540,15 @@ export type Database = {
           bank_name?: string | null
           created_at?: string
           display_name?: string | null
+          etransfer?: string | null
           etransfer_email?: string | null
+          full_name?: string | null
           id: string
           notify_bills?: boolean
           notify_chores?: boolean
           notify_enabled?: boolean
           phone?: string | null
+          privacy_accepted_at?: string | null
           theme?: string
         }
         Update: {
@@ -485,12 +556,15 @@ export type Database = {
           bank_name?: string | null
           created_at?: string
           display_name?: string | null
+          etransfer?: string | null
           etransfer_email?: string | null
+          full_name?: string | null
           id?: string
           notify_bills?: boolean
           notify_chores?: boolean
           notify_enabled?: boolean
           phone?: string | null
+          privacy_accepted_at?: string | null
           theme?: string
         }
         Relationships: []
@@ -619,6 +693,11 @@ export type Database = {
           user_id: string
         }[]
       }
+      mark_notifications_read: { Args: never; Returns: undefined }
+      mark_share_sent: {
+        Args: { p_bill: string; p_sent: boolean }
+        Returns: undefined
+      }
       member_order: { Args: { h: string }; Returns: string[] }
       my_join_request: { Args: never; Returns: Json }
       new_link_invite: { Args: { creator: string; h: string }; Returns: string }
@@ -637,6 +716,10 @@ export type Database = {
       roll_all_recurring_bills: { Args: never; Returns: number }
       roll_household_bills: { Args: { p_household: string }; Returns: number }
       roll_recurring_bills: { Args: { p_household: string }; Returns: number }
+      send_bill_reminder: {
+        Args: { p_bill: string; p_user?: string }
+        Returns: number
+      }
       set_share_paid: {
         Args: { p_bill: string; p_paid: boolean; p_user: string }
         Returns: undefined

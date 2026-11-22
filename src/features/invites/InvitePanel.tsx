@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Icon } from '../../components/Icon'
 import { Segmented } from '../../components/Segmented'
 import { useToast } from '../../components/Toast'
 import { copyText } from '../../lib/clipboard'
@@ -24,7 +25,7 @@ export function InvitePanelView({ token, householdName, emptyMessage, onReset, r
   const [email, setEmail] = useState('')
   const [emails, setEmails] = useState<string[]>([])
 
-  if (!token) return <div className="card empty">{emptyMessage ?? 'Invites aren’t available right now.'}</div>
+  if (!token) return <p className="hint">{emptyMessage ?? 'Invites aren’t available right now.'}</p>
 
   const link = inviteLink(token)
   const code = formatCode(token)
@@ -91,12 +92,12 @@ export function InvitePanelView({ token, householdName, emptyMessage, onReset, r
                 <span key={e} className="ec">
                   {e}
                   <button type="button" aria-label={`Remove ${e}`} onClick={() => setEmails(emails.filter((x) => x !== e))}>
-                    ×
+                    <Icon name="close" size={14} />
                   </button>
                 </span>
               ))
             ) : (
-              <small>Add the emails of the people you live with. We’ll open your email app with the invite ready to send.</small>
+              <small className="hint">Add the emails of the people you live with. We’ll open your email app with the invite ready to send.</small>
             )}
           </div>
           {emails.length > 0 && (
@@ -115,9 +116,11 @@ export function InvitePanelView({ token, householdName, emptyMessage, onReset, r
 
       {tab === 'link' && (
         <>
-          <div className="card lk2">
-            <small>Invite link</small>
-            <b className="mono">{link.replace(/^https?:\/\//, '')}</b>
+          <div className="card2">
+            <small className="hint" style={{ margin: 0 }}>
+              Invite link
+            </small>
+            <div className="mono">{link.replace(/^https?:\/\//, '')}</div>
             <div className="two" style={{ marginTop: 12 }}>
               <button type="button" className="btn" onClick={() => copyText(link, toast, 'invite link')}>
                 Copy link
@@ -144,12 +147,10 @@ export function InvitePanelView({ token, householdName, emptyMessage, onReset, r
           <p style={{ textAlign: 'center', margin: '12px 0', color: 'var(--mute)', fontSize: 15 }}>
             Housemates scan this with their phone camera to join.
           </p>
-          <div className="card lk2" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ flex: 1 }}>
+          <div className="card2 icode">
+            <div>
               <small>Or enter this code</small>
-              <b className="mono" style={{ display: 'block' }}>
-                {code}
-              </b>
+              <div className="mono">{code}</div>
             </div>
             <button type="button" className="tg lnk" onClick={() => copyText(code, toast)}>
               Copy

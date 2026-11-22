@@ -1,4 +1,4 @@
-/* Page basics. Mobile first: the app is a single phone-width column; desktop layouts come in Phase 8. */
+/* Page basics. Mobile first: one phone-width column; desktop layouts come later. */
 *,
 *::before,
 *::after {
@@ -7,28 +7,31 @@
 
 html {
   -webkit-text-size-adjust: 100%;
-  background: var(--bg);
+  background: var(--page);
 }
 
 body {
   margin: 0;
   min-height: 100dvh;
-  font-family: Figtree, system-ui, -apple-system, sans-serif;
+  font-family: Inter, system-ui, -apple-system, sans-serif;
   font-size: 16px;
   color: var(--ink);
-  background: linear-gradient(180deg, var(--b1) 0, var(--bg) 330px) no-repeat, var(--bg);
+  background: var(--page);
   transition: background 0.3s;
 }
 
-h1 {
-  margin: 0 0 6px;
-  font-size: 28px;
-  letter-spacing: -0.02em;
+button {
+  font: inherit;
+  color: inherit;
+  -webkit-tap-highlight-color: transparent;
 }
 
-small {
-  color: var(--mute);
-  font-size: 12.5px;
+h1,
+h2,
+h3,
+h4,
+p {
+  margin: 0;
 }
 
 a {
@@ -44,11 +47,6 @@ label:focus-within {
   outline-offset: 2px;
 }
 
-.mono {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  letter-spacing: 0.04em;
-}
-
 .visually-hidden {
   position: absolute;
   width: 1px;
@@ -58,11 +56,17 @@ label:focus-within {
   white-space: nowrap;
 }
 
+.i {
+  flex: none;
+  display: block;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     transition: none !important;
-    animation: none !important;
+    animation-duration: 0.01s !important;
+    animation-delay: 0s !important;
   }
 }

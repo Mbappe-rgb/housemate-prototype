@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { Avatar } from '../../../components/Avatar'
 import { Segmented } from '../../../components/Segmented'
 import { Sheet } from '../../../components/Sheet'
+import { DatePicker } from '../../../components/DatePicker'
+import { addDays } from '../../../lib/dates'
 import { useHouse } from '../../house/house'
 import { CHORE_EMOJIS } from '../../house/demoData'
 
@@ -61,7 +63,7 @@ export function AddChoreSheet({ onClose }: { onClose: () => void }) {
       />
 
       <h4>{recurrence === 'none' ? 'Due date' : 'Starts on'}</h4>
-      <input className="fld" type="date" min={house.today} aria-label="Due date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+      <DatePicker value={dueDate} onChange={setDueDate} today={house.today} min={house.today} max={addDays(house.today, 366)} />
 
       <button
         type="button"

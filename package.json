@@ -11,7 +11,7 @@
     "db:push": "supabase db push",
     "db:types": "supabase gen types typescript --linked > src/types/database.ts",
     "db:seed": "supabase db query --linked -f supabase/seed.sql",
-    "db:test": "supabase db query --linked -f supabase/tests/isolation.sql",
+    "db:test": "supabase db query --linked -f supabase/tests/isolation.sql | node scripts/print-db-test.mjs",
     "test": "vitest run"
   },
   "dependencies": {
